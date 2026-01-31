@@ -1,0 +1,60 @@
+# CI: run full test suite against Postgres (including scheduler tick tests).
+# Local "make test" uses SQLite (4 passed, 2 skipped). Here we run all 6.
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: curbkey
+          POSTGRES_PASSWORD: curbkey
+          POSTGRES_DB: curbkey
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U curbkey -d curbkey"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://curbkey:curbkey@localhost:5432/curbkey
+      JWT_SECRET_KEY: ci-secret
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run migrations
+        run: |
+          cd backend
+          flask db upgrade
+        env:
+          FLASK_APP: wsgi:app
+
+      - name: Run tests (full suite with Postgres)
+        run: |
+          cd backend
+          python -m pytest tests/ -v
+        env:
+          FLASK_APP: wsgi:app

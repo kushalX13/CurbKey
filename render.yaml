@@ -1,0 +1,21 @@
+# Render Blueprint: backend web service (optional worker in dashboard).
+# Postgres: create separately (Neon/Supabase) or add Render Postgres and use Internal URL.
+# Frontend: deploy to Vercel; set NEXT_PUBLIC_API_BASE to the web service URL.
+services:
+  - type: web
+    name: curbkey-api
+    runtime: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt && cd backend && flask db upgrade
+    startCommand: cd backend && gunicorn --bind 0.0.0.0:$PORT wsgi:app
+    envVars:
+      - key: FLASK_APP
+        value: wsgi:app
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+    healthCheckPath: /healthz

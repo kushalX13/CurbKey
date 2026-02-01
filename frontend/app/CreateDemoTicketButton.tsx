@@ -43,7 +43,7 @@ export default function CreateDemoTicketButton() {
     <button
       type="button"
       onClick={handleClick}
-      className="mt-3 inline-block rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"
+      className="btn-primary inline-flex items-center rounded-lg px-5 py-2.5 text-sm"
     >
       Open sample ticket
     </button>

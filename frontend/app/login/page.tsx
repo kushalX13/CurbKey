@@ -56,29 +56,29 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-100 flex items-center justify-center p-4 font-sans">
-      <main className="w-full max-w-sm rounded-xl border border-zinc-300 bg-white p-6 shadow-sm">
-        <h1 className="text-xl font-bold text-zinc-900">CurbKey — Sign in</h1>
-        <p className="mt-1 text-sm text-zinc-600">Valet or Manager</p>
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 flex items-center justify-center p-6">
+      <main className="w-full max-w-md card p-8">
+        <h1 className="text-2xl font-bold tracking-tight text-stone-900">Sign in</h1>
+        <p className="mt-1 text-sm text-stone-500">Valet or Manager</p>
 
-        <form onSubmit={submit} className="mt-6 flex flex-col gap-4">
+        <form onSubmit={submit} className="mt-8 flex flex-col gap-5">
           <div>
-            <label className="block text-sm font-medium text-zinc-700">Email</label>
+            <label className="block text-sm font-medium text-stone-700">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
+              className="input-premium mt-1.5"
               required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-700">Password</label>
+            <label className="block text-sm font-medium text-stone-700">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-zinc-900"
+              className="input-premium mt-1.5"
               required
             />
           </div>
@@ -86,16 +86,16 @@ function LoginForm() {
           <button
             type="submit"
             disabled={loading}
-            className="rounded-lg bg-zinc-900 px-4 py-2 font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+            className="btn-primary w-full py-3 disabled:opacity-60"
           >
             {loading ? "Signing in…" : "Sign in"}
           </button>
         </form>
 
-        <p className="mt-4 text-xs text-zinc-500">
+        <p className="mt-6 text-xs text-stone-400">
           After seed: admin@curbkey.com / admin123
         </p>
-        <a href="/" className="mt-3 inline-block text-sm text-zinc-600 hover:underline">
+        <a href="/" className="mt-4 inline-block text-sm text-stone-500 transition hover:text-stone-700">
           ← Back to home
         </a>
       </main>
@@ -107,8 +107,8 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-zinc-100 flex items-center justify-center p-4 font-sans">
-          <p className="text-zinc-600">Loading…</p>
+        <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 flex items-center justify-center p-6">
+          <p className="text-stone-500">Loading…</p>
         </div>
       }
     >

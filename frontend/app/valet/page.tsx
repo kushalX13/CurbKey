@@ -156,130 +156,130 @@ export default function ValetPage() {
   }, [venueId, tab]);
 
   return (
-    <main className="mx-auto max-w-3xl p-6 font-sans">
-      <h1 className="text-2xl font-bold text-zinc-900">CurbKey — Valet Console</h1>
-      <a href="/" className="mt-2 inline-block text-sm text-zinc-600 hover:underline">← Home</a>
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100">
+      <main className="mx-auto max-w-3xl px-6 py-8 sm:py-10">
+        <header className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">Valet Console</h1>
+          <a href="/" className="text-sm font-medium text-stone-500 transition hover:text-stone-800">← Home</a>
+        </header>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <label className="text-sm font-medium text-zinc-700">Venue ID</label>
-        <input
-          type="number"
-          value={venueId ?? 1}
-          onChange={(e) => setVenueId(Number(e.target.value) || 1)}
-          className="w-20 rounded-lg border border-zinc-300 px-2 py-1.5 text-zinc-900"
-        />
-        <button
-          onClick={() => load(null, false).catch((e) => setErr(String(e)))}
-          className="rounded-lg bg-zinc-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700"
-        >
-          Refresh
-        </button>
-      </div>
-
-      {err && <p className="mt-3 text-sm text-red-600">{err}</p>}
-
-      <div className="mt-6 flex gap-2 border-b border-zinc-200">
-        <button
-          type="button"
-          onClick={() => setTab("active")}
-          className={`border-b-2 px-3 py-2 text-sm font-medium ${
-            tab === "active"
-              ? "border-zinc-900 text-zinc-900"
-              : "border-transparent text-zinc-500 hover:text-zinc-700"
-          }`}
-        >
-          Active
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab("history")}
-          className={`border-b-2 px-3 py-2 text-sm font-medium ${
-            tab === "history"
-              ? "border-zinc-900 text-zinc-900"
-              : "border-transparent text-zinc-500 hover:text-zinc-700"
-          }`}
-        >
-          History
-        </button>
-      </div>
-
-      <div className="mt-4 grid gap-4">
-        {reqs.map((r) => (
-          <div key={r.id} className="rounded-xl border border-zinc-300 bg-white p-4 shadow-sm">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <div className="font-bold text-zinc-900">Request #{r.id}</div>
-                {r.scheduled_for && (
-                  <div className="text-sm text-zinc-600">
-                    Scheduled for: <strong>{new Date(r.scheduled_for).toLocaleString()}</strong>
-                    <ScheduledCountdown scheduledFor={r.scheduled_for} />
-                  </div>
-                )}
-                <div className="text-sm text-zinc-600">
-                  Exit: <strong>{r.exit?.code ?? "—"}</strong> ({r.exit?.name ?? ""})
-                </div>
-                <div className="text-sm text-zinc-600">
-                  Ticket: <strong>{r.ticket_token ?? "—"}</strong>{" "}
-                  {r.ticket_token && (
-                    <a href={`/t/${r.ticket_token}`} className="ml-2 text-blue-600 hover:underline">
-                      Open guest
-                    </a>
-                  )}
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <label className="text-sm text-zinc-600">Car #:</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. ABC 1234"
-                    value={carNumberDrafts[r.ticket_id] ?? r.car_number ?? ""}
-                    onChange={(e) => setCarNumberDrafts((prev) => ({ ...prev, [r.ticket_id]: e.target.value }))}
-                    className="w-32 rounded border border-zinc-300 px-2 py-1 text-sm text-zinc-900"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setCarNumber(r.ticket_id, carNumberDrafts[r.ticket_id] ?? r.car_number ?? "").catch((e) => alert(String(e)))}
-                    className="rounded bg-zinc-700 px-2 py-1 text-xs font-medium text-white hover:bg-zinc-600"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-              <div className="rounded bg-zinc-200 px-2 py-1 font-bold text-zinc-900">{r.status}</div>
-            </div>
-
-            {(ACTIONS_BY_STATUS[r.status] ?? []).length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {(ACTIONS_BY_STATUS[r.status] ?? []).map((action) => (
-                  <button
-                    key={action}
-                    onClick={() => setStatus(r.id, action).catch((e) => alert(String(e)))}
-                    className={
-                      action === "RETRIEVING"
-                        ? "rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700"
-                        : action === "READY"
-                          ? "rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
-                          : "rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
-                    }
-                  >
-                    {ACTION_LABELS[action] ?? action}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-        {nextCursor != null && (
-          <div className="mt-4 flex justify-center">
+        <section className="card card-hover mb-6 p-4 sm:p-5">
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="text-sm font-medium text-stone-700">Venue ID</label>
+            <input
+              type="number"
+              value={venueId ?? 1}
+              onChange={(e) => setVenueId(Number(e.target.value) || 1)}
+              className="input-premium w-24"
+            />
             <button
-              type="button"
-              onClick={() => load(nextCursor, true).catch((e) => setErr(String(e)))}
-              className="rounded-lg border-2 border-zinc-400 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+              onClick={() => load(null, false).catch((e) => setErr(String(e)))}
+              className="btn-primary px-4 py-2.5 text-sm"
             >
-              Load more
+              Refresh
             </button>
           </div>
-        )}
-      </div>
-    </main>
+        </section>
+
+        {err && <p className="mb-4 text-sm text-red-600">{err}</p>}
+
+        <div className="mb-5 flex gap-0.5 rounded-lg bg-stone-100 p-1">
+          <button
+            type="button"
+            onClick={() => setTab("active")}
+            className={`flex-1 rounded-md px-3.5 py-2 text-sm font-medium transition sm:flex-none ${tab === "active" ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-900"}`}
+          >
+            Active
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("history")}
+            className={`flex-1 rounded-md px-3.5 py-2 text-sm font-medium transition sm:flex-none ${tab === "history" ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-900"}`}
+          >
+            History
+          </button>
+        </div>
+
+        <div className="grid gap-4">
+          {reqs.map((r) => (
+            <div key={r.id} className="card card-hover p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold text-stone-900">Request #{r.id}</span>
+                    <span className="rounded-full bg-stone-200 px-2.5 py-0.5 text-xs font-semibold text-stone-700">{r.status}</span>
+                  </div>
+                  {r.scheduled_for && (
+                    <div className="mt-1.5 text-sm text-stone-600">
+                      Scheduled: <strong>{new Date(r.scheduled_for).toLocaleString()}</strong>
+                      <ScheduledCountdown scheduledFor={r.scheduled_for} />
+                    </div>
+                  )}
+                  <div className="mt-1 text-sm text-stone-600">
+                    Exit: <strong>{r.exit?.code ?? "—"}</strong> {r.exit?.name && <span className="text-stone-500">({r.exit.name})</span>}
+                  </div>
+                  <div className="mt-1 text-sm text-stone-600">
+                    Ticket: <strong>{r.ticket_token ?? "—"}</strong>{" "}
+                    {r.ticket_token && (
+                      <a href={`/t/${r.ticket_token}`} className="font-medium text-[var(--primary)] hover:underline">
+                        Open guest
+                      </a>
+                    )}
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <label className="text-sm font-medium text-stone-600">Car #</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. ABC 1234"
+                      value={carNumberDrafts[r.ticket_id] ?? r.car_number ?? ""}
+                      onChange={(e) => setCarNumberDrafts((prev) => ({ ...prev, [r.ticket_id]: e.target.value }))}
+                      className="input-premium w-36"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCarNumber(r.ticket_id, carNumberDrafts[r.ticket_id] ?? r.car_number ?? "").catch((e) => alert(String(e)))}
+                      className="btn-primary px-3 py-2 text-sm"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {(ACTIONS_BY_STATUS[r.status] ?? []).length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2 border-t border-stone-200 pt-4">
+                  {(ACTIONS_BY_STATUS[r.status] ?? []).map((action) => (
+                    <button
+                      key={action}
+                      onClick={() => setStatus(r.id, action).catch((e) => alert(String(e)))}
+                      className={
+                        action === "RETRIEVING"
+                          ? "btn-accent px-3.5 py-2 text-sm"
+                          : action === "READY"
+                            ? "rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 active:scale-[0.98]"
+                            : "btn-primary px-3.5 py-2 text-sm"
+                      }
+                    >
+                      {ACTION_LABELS[action] ?? action}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+          {nextCursor != null && (
+            <div className="flex justify-center pt-2">
+              <button
+                type="button"
+                onClick={() => load(nextCursor, true).catch((e) => setErr(String(e)))}
+                className="rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+              >
+                Load more
+              </button>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
   );
 }

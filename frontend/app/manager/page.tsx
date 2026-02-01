@@ -207,148 +207,126 @@ export default function ManagerPage() {
   }, [reqTab]);
 
   return (
-    <main className="mx-auto max-w-3xl p-6 font-sans">
-      <h1 className="text-2xl font-bold text-zinc-900">CurbKey — Manager</h1>
-      <a href="/" className="mt-2 inline-block text-sm text-zinc-600 hover:underline">← Home</a>
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100">
+      <main className="mx-auto max-w-3xl px-6 py-8 sm:py-10">
+        <header className="mb-8 flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">Manager</h1>
+          <a href="/" className="text-sm font-medium text-stone-500 transition hover:text-stone-800">← Home</a>
+        </header>
 
-      <section className="mt-6 rounded-xl border border-zinc-300 bg-white p-4 shadow-sm">
-        <h2 className="font-semibold text-zinc-900">Demo Kit</h2>
-        <p className="mt-1 text-sm text-zinc-600">Set up and tear down the demo in seconds.</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            onClick={runSeedDemo}
-            className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
-          >
-            Seed Demo
-          </button>
-          <button
-            onClick={runCreateTicket}
-            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700"
-          >
-            Create Ticket
-          </button>
-          <button
-            onClick={copyGuestLink}
-            disabled={!lastGuestUrl}
-            className="rounded-lg border border-zinc-400 bg-white px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Copy Guest Link
-          </button>
-          <button
-            onClick={runResetDemo}
-            className="rounded-lg border border-red-400 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
-          >
-            Reset Demo
-          </button>
-        </div>
-        {seedResult && <p className="mt-2 text-sm text-zinc-600">{seedResult}</p>}
-        <div ref={createResultRef}>
-          {createTicketResult && <p className="mt-2 text-sm text-zinc-600">{createTicketResult}</p>}
-        </div>
-        {lastGuestUrl && (
-          <>
-            <p className="mt-2 truncate text-xs text-zinc-500" title={lastGuestUrl}>
-              {lastGuestUrl}
-            </p>
-            <div className="mt-3 flex flex-col items-start gap-2">
-              <span className="text-sm font-medium text-zinc-700">Guest QR code — customer scans to open ticket (no app)</span>
-              <div className="rounded-lg border-2 border-zinc-200 bg-white p-3">
-                <QRCodeSVG value={lastGuestUrl} size={200} level="M" />
-              </div>
-              <p className="text-xs text-zinc-500">Valet can print this or show on a tablet; scan opens the guest page.</p>
-            </div>
-          </>
-        )}
-        {resetResult && <p className="mt-2 text-sm text-zinc-600">{resetResult}</p>}
-      </section>
-
-      <section className="mt-6 rounded-xl border border-zinc-300 bg-white p-4 shadow-sm">
-        <h2 className="font-semibold text-zinc-900">Ops</h2>
-        <div className="mt-3 flex flex-wrap gap-3">
-          <button
-            onClick={runTick}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Scheduler tick
-          </button>
-          <button
-            onClick={runDrain}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-          >
-            Drain notifications
-          </button>
-        </div>
-        {tickResult && <p className="mt-2 text-sm text-zinc-600">{tickResult}</p>}
-        {drainResult && <p className="mt-2 text-sm text-zinc-600">{drainResult}</p>}
-      </section>
-
-      {err && <p className="mt-3 text-sm text-red-600">{err}</p>}
-
-      <section className="mt-6">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="font-semibold text-zinc-900">Requests</h2>
-          <div className="flex gap-2 border-b border-zinc-200">
-            <button
-              type="button"
-              onClick={() => setReqTab("active")}
-              className={`border-b-2 px-3 py-1.5 text-sm font-medium ${
-                reqTab === "active"
-                  ? "border-zinc-900 text-zinc-900"
-                  : "border-transparent text-zinc-500 hover:text-zinc-700"
-              }`}
-            >
-              Active
+        <section className="card card-hover mb-6 p-6 sm:p-7">
+          <h2 className="text-lg font-semibold text-stone-900">Demo Kit</h2>
+          <p className="mt-1 text-sm text-stone-500">Set up and tear down the demo in seconds.</p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button onClick={runSeedDemo} className="btn-accent px-4 py-2.5 text-sm">
+              Seed Demo
+            </button>
+            <button onClick={runCreateTicket} className="btn-primary px-4 py-2.5 text-sm">
+              Create Ticket
             </button>
             <button
-              type="button"
-              onClick={() => setReqTab("history")}
-              className={`border-b-2 px-3 py-1.5 text-sm font-medium ${
-                reqTab === "history"
-                  ? "border-zinc-900 text-zinc-900"
-                  : "border-transparent text-zinc-500 hover:text-zinc-700"
-              }`}
+              onClick={copyGuestLink}
+              disabled={!lastGuestUrl}
+              className="rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              History
+              Copy Guest Link
+            </button>
+            <button
+              onClick={runResetDemo}
+              className="rounded-lg border border-red-200 bg-white px-4 py-2.5 text-sm font-medium text-red-700 transition hover:bg-red-50"
+            >
+              Reset Demo
             </button>
           </div>
-        </div>
-        <div className="mt-3 grid gap-3">
-          {reqs.map((r) => (
-            <div key={r.id} className="rounded-xl border border-zinc-300 bg-white p-3 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <span className="font-bold text-zinc-900">#{r.id}</span>
-                  <span className="ml-2 rounded bg-zinc-200 px-2 py-0.5 text-sm font-medium text-zinc-800">
-                    {r.status}
-                  </span>
-                  {r.scheduled_for && (
-                    <span className="ml-2 text-xs text-zinc-500">scheduled {r.scheduled_for}</span>
-                  )}
+          {seedResult && <p className="mt-3 text-sm text-stone-600">{seedResult}</p>}
+          <div ref={createResultRef}>
+            {createTicketResult && <p className="mt-2 text-sm text-stone-600">{createTicketResult}</p>}
+          </div>
+          {lastGuestUrl && (
+            <>
+              <p className="mt-2 truncate text-xs text-stone-500" title={lastGuestUrl}>{lastGuestUrl}</p>
+              <div className="mt-5 flex flex-col items-start gap-2">
+                <span className="text-sm font-medium text-stone-700">Guest QR code — customer scans to open ticket</span>
+                <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
+                  <QRCodeSVG value={lastGuestUrl} size={200} level="M" />
                 </div>
-                <div className="text-sm text-zinc-600">
-                  Exit: {r.exit?.code ?? "—"}
-                  {r.ticket_token && (
-                    <a href={`/t/${r.ticket_token}`} className="ml-2 text-blue-600 hover:underline">
-                      Guest
-                    </a>
-                  )}
-                </div>
+                <p className="text-xs text-stone-500">Valet can print or show on a tablet; scan opens the guest page.</p>
               </div>
-            </div>
-          ))}
-        </div>
-        {nextCursor != null && (
-          <div className="mt-3 flex justify-center">
-            <button
-              type="button"
-              onClick={() => load(nextCursor, true).catch((e) => setErr(String(e)))}
-              className="rounded-lg border-2 border-zinc-400 bg-white px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-            >
-              Load more
+            </>
+          )}
+          {resetResult && <p className="mt-2 text-sm text-stone-600">{resetResult}</p>}
+        </section>
+
+        <section className="card card-hover mb-6 p-6 sm:p-7">
+          <h2 className="text-lg font-semibold text-stone-900">Ops</h2>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button onClick={runTick} className="btn-primary px-4 py-2.5 text-sm">
+              Scheduler tick
+            </button>
+            <button onClick={runDrain} className="btn-accent px-4 py-2.5 text-sm">
+              Drain notifications
             </button>
           </div>
-        )}
-      </section>
-    </main>
+          {tickResult && <p className="mt-2 text-sm text-stone-600">{tickResult}</p>}
+          {drainResult && <p className="mt-2 text-sm text-stone-600">{drainResult}</p>}
+        </section>
+
+        {err && <p className="mb-4 text-sm text-red-600">{err}</p>}
+
+        <section>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold text-stone-900">Requests</h2>
+            <div className="flex gap-0.5 rounded-lg bg-stone-100 p-1">
+              <button
+                type="button"
+                onClick={() => setReqTab("active")}
+                className={`rounded-md px-3.5 py-2 text-sm font-medium transition ${reqTab === "active" ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-900"}`}
+              >
+                Active
+              </button>
+              <button
+                type="button"
+                onClick={() => setReqTab("history")}
+                className={`rounded-md px-3.5 py-2 text-sm font-medium transition ${reqTab === "history" ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-900"}`}
+              >
+                History
+              </button>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-3">
+            {reqs.map((r) => (
+              <div key={r.id} className="card card-hover p-4 sm:p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="font-semibold text-stone-900">#{r.id}</span>
+                    <span className="ml-2 rounded-full bg-stone-200 px-2.5 py-0.5 text-xs font-medium text-stone-700">{r.status}</span>
+                    {r.scheduled_for && <span className="ml-2 text-xs text-stone-500">scheduled {r.scheduled_for}</span>}
+                  </div>
+                  <div className="text-sm text-stone-600">
+                    Exit {r.exit?.code ?? "—"}
+                    {r.ticket_token && (
+                      <a href={`/t/${r.ticket_token}`} className="ml-2 font-medium text-[var(--primary)] hover:underline">
+                        Guest
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {nextCursor != null && (
+            <div className="mt-5 flex justify-center">
+              <button
+                type="button"
+                onClick={() => load(nextCursor, true).catch((e) => setErr(String(e)))}
+                className="rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+              >
+                Load more
+              </button>
+            </div>
+          )}
+        </section>
+      </main>
+    </div>
   );
 }

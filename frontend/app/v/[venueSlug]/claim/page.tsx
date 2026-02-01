@@ -73,9 +73,9 @@ function ClaimForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone: p, claim_code: code }),
       });
-      let data: ConfirmResult = {};
+      let data: Partial<ConfirmResult> = {};
       try {
-        data = await r.json();
+        data = (await r.json()) as Partial<ConfirmResult>;
       } catch {
         if (r.status === 429) setErr("Too many attempts. Please try again in a few minutes.");
         else setErr("Something went wrong. Please try again.");
@@ -85,8 +85,8 @@ function ClaimForm() {
         setErr(data.message || (r.status === 429 ? "Too many attempts. Please try again later." : "Invalid or expired code. Please try again."));
         return;
       }
-      if (data.ok) {
-        setResult(data);
+      if (data.ok && data.guest_path) {
+        setResult(data as ConfirmResult);
       } else {
         setErr(data.message || "Something went wrong.");
       }

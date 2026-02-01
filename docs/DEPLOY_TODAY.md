@@ -133,6 +133,20 @@ If Vercel doesn’t detect the Next.js app (e.g. repo root has `frontend/`):
 
 ---
 
+## If you see 404 NOT_FOUND (white / blank page) on Vercel
+
+The deployment is “Ready” but visiting your Vercel URL shows **404: NOT_FOUND**. That usually means the app was not built from the `frontend` folder.
+
+1. In **Vercel** → your project (**curb-key**) → **Settings** → **General**.
+2. Under **Root Directory**, click **Edit**.
+3. Set the value to exactly **`frontend`** (no leading slash, no trailing slash). Leave “Include files outside the root directory” as you like.
+4. Click **Save**.
+5. Go to **Deployments** → open the **⋯** menu on the latest deployment → **Redeploy** (or push a new commit to `main`).
+
+After the new deploy finishes, open your production URL again (e.g. `https://curb-key.vercel.app`). The home page should load instead of 404.
+
+---
+
 ## Optional — Worker (scheduler + notifications)
 
 To run “Scheduler tick” and “Drain notifications” automatically (so you don’t have to click in Manager):

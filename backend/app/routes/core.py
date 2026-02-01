@@ -71,6 +71,7 @@ def _json(model):
             "venue_id": model.venue_id,
             "token": model.token,
             "car_number": model.car_number,
+            "vehicle_description": model.vehicle_description,
             "claim_code": model.claim_code,
             "claimed_phone": model.claimed_phone,
             "claimed_at": model.claimed_at.isoformat() if model.claimed_at else None,
@@ -90,6 +91,7 @@ def _json(model):
             "ticket_id": model.ticket_id,
             "ticket_token": ticket.token if ticket else None,
             "car_number": ticket.car_number if ticket else None,
+            "vehicle_description": ticket.vehicle_description if ticket else None,
             "claimed_at": ticket.claimed_at.isoformat() if ticket and ticket.claimed_at else None,
             "claimed_phone_masked": claimed_phone_masked,
             "exit_id": model.exit_id,
@@ -461,17 +463,42 @@ def create_ticket():
     return jsonify({"ticket": _json(t), "guest_path": f"/t/{t.token}", "claim_code": claim_code, "venue_slug": venue.slug}), 201
 
 
+@bp.post("/api/valet/tickets")
+@require_role(Role.VALET)
+def valet_create_ticket():
+    """Valet: create a ticket when a car arrives. Uses valet's venue. Returns claim code + venue link for customer."""
+    user = g.user
+    if not user.venue_id:
+        abort(403, "valet has no venue")
+    venue = Venue.query.get_or_404(user.venue_id)
+    token = Ticket.new_token()
+    claim_code = _generate_claim_code(venue.id)
+    expires = datetime.utcnow() + timedelta(hours=CLAIM_CODE_EXPIRY_HOURS)
+    t = Ticket(venue_id=venue.id, token=token, claim_code=claim_code, claim_code_expires_at=expires)
+    db.session.add(t)
+    db.session.commit()
+    guest_path = f"/t/{t.token}"
+    return jsonify({
+        "ticket": _json(t),
+        "guest_path": guest_path,
+        "claim_code": claim_code,
+        "venue_slug": venue.slug,
+    }), 201
+
+
 @bp.patch("/api/tickets/<int:ticket_id>/car-number")
 @require_role(Role.VALET, Role.MANAGER)
 def set_ticket_car_number(ticket_id: int):
-    """Valet/manager: set car number (license plate) on ticket when receiving the car."""
+    """Valet/manager: set car number (plate) and vehicle description (e.g. McLaren 720) on ticket."""
     t = Ticket.query.get_or_404(ticket_id)
     user = g.user
     if user.role == Role.VALET and t.venue_id != user.venue_id:
         abort(403, "ticket not in your venue")
     data = request.get_json(silent=True) or {}
     car_number = (data.get("car_number") or "").strip() or None
+    vehicle_description = (data.get("vehicle_description") or "").strip() or None
     t.car_number = car_number
+    t.vehicle_description = vehicle_description
     db.session.commit()
     return jsonify({"ticket": _json(t)}), 200
 

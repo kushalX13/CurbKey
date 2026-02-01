@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 import { getStoredToken } from "../login/page";
 
 type ReqT = {
@@ -9,12 +10,15 @@ type ReqT = {
   ticket_id: number;
   ticket_token?: string;
   car_number?: string | null;
+  vehicle_description?: string | null;
   status: string;
   scheduled_for?: string | null;
   exit?: { code: string; name: string };
   claimed_at?: string | null;
   claimed_phone_masked?: string | null;
 };
+
+type NewTicketResult = { id: number; claim_code: string; venue_slug: string };
 
 function authHeaders(): HeadersInit {
   const t = getStoredToken();
@@ -77,13 +81,50 @@ export default function ValetPage() {
   const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [err, setErr] = useState<string>("");
   const [carNumberDrafts, setCarNumberDrafts] = useState<Record<number, string>>({});
+  const [vehicleDescriptionDrafts, setVehicleDescriptionDrafts] = useState<Record<number, string>>({});
+  const [lastCreatedTicket, setLastCreatedTicket] = useState<NewTicketResult | null>(null);
+  const [createTicketLoading, setCreateTicketLoading] = useState(false);
+  const [newTicketVehicle, setNewTicketVehicle] = useState("");
+  const [newTicketCarNumber, setNewTicketCarNumber] = useState("");
   const PAGE_SIZE = 50;
 
-  const setCarNumber = async (ticketId: number, carNumber: string) => {
+  const createTicket = async () => {
+    setCreateTicketLoading(true);
+    setErr("");
+    try {
+      const r = await fetch(`${API}/api/valet/tickets`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({}),
+      });
+      if (r.status === 401) {
+        router.replace("/login?next=/valet");
+        return;
+      }
+      if (!r.ok) throw new Error(await r.text());
+      const data = await r.json();
+      setLastCreatedTicket({
+        id: data.ticket.id,
+        claim_code: data.claim_code,
+        venue_slug: data.venue_slug,
+      });
+      setNewTicketVehicle("");
+      setNewTicketCarNumber("");
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setCreateTicketLoading(false);
+    }
+  };
+
+  const setCarDetails = async (ticketId: number, carNumber: string, vehicleDescription?: string) => {
     const r = await fetch(`${API}/api/tickets/${ticketId}/car-number`, {
       method: "PATCH",
       headers: authHeaders(),
-      body: JSON.stringify({ car_number: carNumber || null }),
+      body: JSON.stringify({
+        car_number: carNumber || null,
+        vehicle_description: (vehicleDescription ?? "").trim() || null,
+      }),
     });
     if (r.status === 401) {
       router.replace("/login?next=/valet");
@@ -91,6 +132,16 @@ export default function ValetPage() {
     }
     if (!r.ok) throw new Error(await r.text());
     await load();
+  };
+
+  const saveNewTicketCarDetails = async () => {
+    if (!lastCreatedTicket) return;
+    try {
+      await setCarDetails(lastCreatedTicket.id, newTicketCarNumber, newTicketVehicle);
+      setLastCreatedTicket(null);
+    } catch (e) {
+      setErr(String(e));
+    }
   };
 
   useEffect(() => {
@@ -183,6 +234,64 @@ export default function ValetPage() {
           </div>
         </section>
 
+        <section className="card card-hover mb-6 p-5 sm:p-6">
+          <h2 className="text-lg font-semibold text-stone-900">New car — create ticket</h2>
+          <p className="mt-1 text-sm text-stone-500">When a car rolls up: create ticket, show QR + code to customer, then enter car details.</p>
+          <button
+            type="button"
+            onClick={createTicket}
+            disabled={createTicketLoading}
+            className="btn-primary mt-4 px-4 py-2.5 text-sm disabled:opacity-60"
+          >
+            {createTicketLoading ? "Creating…" : "Create ticket"}
+          </button>
+          {lastCreatedTicket && (
+            <div className="mt-5 rounded-lg bg-stone-50 p-4">
+              <p className="text-xs font-medium uppercase tracking-wider text-stone-500">Give customer this code</p>
+              <p className="mt-1 font-mono text-2xl font-bold tracking-widest text-stone-900">{lastCreatedTicket.claim_code}</p>
+              <p className="mt-2 text-xs font-medium uppercase tracking-wider text-stone-500">Customer scans this (venue link)</p>
+              <p className="mt-1 break-all text-sm font-medium text-stone-800">
+                {typeof window !== "undefined" ? `${window.location.origin}/v/${lastCreatedTicket.venue_slug}` : `/v/${lastCreatedTicket.venue_slug}`}
+              </p>
+              <div className="mt-3 flex justify-start">
+                <div className="rounded-lg border border-stone-200 bg-white p-3">
+                  <QRCodeSVG
+                    value={typeof window !== "undefined" ? `${window.location.origin}/v/${lastCreatedTicket.venue_slug}` : `/v/${lastCreatedTicket.venue_slug}`}
+                    size={140}
+                    level="M"
+                  />
+                </div>
+              </div>
+              <p className="mt-4 text-xs font-medium uppercase tracking-wider text-stone-500">Enter car details (after customer leaves)</p>
+              <div className="mt-2 flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-stone-600">Vehicle (e.g. McLaren 720)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. McLaren 720"
+                    value={newTicketVehicle}
+                    onChange={(e) => setNewTicketVehicle(e.target.value)}
+                    className="input-premium mt-1 w-44"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-stone-600">Plate / Car #</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. ABC 1234"
+                    value={newTicketCarNumber}
+                    onChange={(e) => setNewTicketCarNumber(e.target.value)}
+                    className="input-premium mt-1 w-36"
+                  />
+                </div>
+                <button type="button" onClick={saveNewTicketCarDetails} className="btn-primary px-3 py-2 text-sm">
+                  Save
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+
         {err && <p className="mb-4 text-sm text-red-600">{err}</p>}
 
         <div className="mb-5 flex gap-0.5 rounded-lg bg-stone-100 p-1">
@@ -233,19 +342,37 @@ export default function ValetPage() {
                       </a>
                     )}
                   </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <label className="text-sm font-medium text-stone-600">Car #</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. ABC 1234"
-                      value={carNumberDrafts[r.ticket_id] ?? r.car_number ?? ""}
-                      onChange={(e) => setCarNumberDrafts((prev) => ({ ...prev, [r.ticket_id]: e.target.value }))}
-                      className="input-premium w-36"
-                    />
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-stone-600">Vehicle</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. McLaren 720"
+                        value={vehicleDescriptionDrafts[r.ticket_id] ?? r.vehicle_description ?? ""}
+                        onChange={(e) => setVehicleDescriptionDrafts((prev) => ({ ...prev, [r.ticket_id]: e.target.value }))}
+                        className="input-premium mt-1 w-36"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-stone-600">Car #</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. ABC 1234"
+                        value={carNumberDrafts[r.ticket_id] ?? r.car_number ?? ""}
+                        onChange={(e) => setCarNumberDrafts((prev) => ({ ...prev, [r.ticket_id]: e.target.value }))}
+                        className="input-premium mt-1 w-32"
+                      />
+                    </div>
                     <button
                       type="button"
-                      onClick={() => setCarNumber(r.ticket_id, carNumberDrafts[r.ticket_id] ?? r.car_number ?? "").catch((e) => alert(String(e)))}
-                      className="btn-primary px-3 py-2 text-sm"
+                      onClick={() =>
+                        setCarDetails(
+                          r.ticket_id,
+                          carNumberDrafts[r.ticket_id] ?? r.car_number ?? "",
+                          vehicleDescriptionDrafts[r.ticket_id] ?? r.vehicle_description ?? ""
+                        ).catch((e) => alert(String(e)))
+                      }
+                      className="btn-primary self-end px-3 py-2 text-sm"
                     >
                       Save
                     </button>

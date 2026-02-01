@@ -81,7 +81,8 @@ class Ticket(db.Model):
     venue_id = db.Column(db.Integer, db.ForeignKey("venues.id"), nullable=False)
 
     token = db.Column(db.String(64), unique=True, nullable=False, index=True)
-    car_number = db.Column(db.String(40), nullable=True)  # license plate / car id — valet sets when receiving car
+    car_number = db.Column(db.String(40), nullable=True)  # license plate / last 4 — valet sets when receiving car
+    vehicle_description = db.Column(db.String(80), nullable=True)  # e.g. "McLaren 720" — valet sets
     claim_code = db.Column(db.String(12), nullable=True, index=True)  # 6-digit human code, unique per venue
     claim_code_expires_at = db.Column(db.DateTime, nullable=True)
     claimed_phone = db.Column(db.String(40), nullable=True)

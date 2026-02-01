@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 
 type ExitT = { id: number; code: string; name: string };
 type TicketResp = {
-  ticket: { id: number; venue_id: number; token: string; car_number?: string | null };
+  ticket: { id: number; venue_id: number; token: string; car_number?: string | null; vehicle_description?: string | null };
   request: null | {
     id: number;
     status: string;
@@ -166,11 +166,17 @@ export default function TicketPage() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-stone-900">CurbKey</h1>
-            {ticket?.car_number && (
-              <p className="mt-0.5 text-sm text-stone-500">
-                Your car: <span className="font-medium uppercase tracking-wide text-stone-700">{ticket.car_number}</span>
-              </p>
-            )}
+            {(() => {
+              const type = ticket?.vehicle_description ?? "";
+              const plate = ticket?.car_number ?? "";
+              const last4 = plate.length >= 4 ? `••••${plate.slice(-4)}` : plate;
+              const carLine = type && last4 ? `${type} ${last4}` : type || last4;
+              return carLine ? (
+                <p className="mt-0.5 text-sm text-stone-500">
+                  Your car: <span className="font-medium tracking-wide text-stone-700">{carLine}</span>
+                </p>
+              ) : null;
+            })()}
           </div>
           <a
             href="/"

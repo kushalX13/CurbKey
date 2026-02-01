@@ -266,7 +266,7 @@ export default function ValetPage() {
         <section className="card card-hover mb-6 p-4 sm:p-5">
           <div className="flex flex-wrap items-center gap-4">
             <label className="text-sm font-medium text-stone-700">Venue ID</label>
-            {"Notification" in window && (
+            {typeof window !== "undefined" && "Notification" in window && (
               <button
                 type="button"
                 onClick={async () => {

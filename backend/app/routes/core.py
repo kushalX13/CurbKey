@@ -97,7 +97,7 @@ def _json(model):
             "exit_id": model.exit_id,
             "exit": _json(model.exit),
             "status": model.status,
-            "scheduled_for": model.scheduled_for.isoformat() if model.scheduled_for else None,
+            "scheduled_for": (model.scheduled_for.isoformat() + "Z") if model.scheduled_for else None,
             "assigned_to": model.assigned_to,
             "assigned_at": model.assigned_at.isoformat() if model.assigned_at else None,
             "zone_id": model.zone_id,

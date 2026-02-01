@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { formatDateTime, parseUTC } from "../../utils/date";
 
 type ExitT = { id: number; code: string; name: string };
 type TicketResp = {
@@ -79,6 +80,33 @@ function getStatusConfig(status: string) {
     bg: "bg-stone-100",
     text: "text-stone-700",
   };
+}
+
+function ScheduledCountdown({ scheduledFor }: { scheduledFor: string | null | undefined }) {
+  const [remaining, setRemaining] = useState<string>("");
+  useEffect(() => {
+    if (!scheduledFor) {
+      setRemaining("");
+      return;
+    }
+    const update = () => {
+      const at = parseUTC(scheduledFor);
+      const now = Date.now();
+      const sec = Math.max(0, Math.floor((at - now) / 1000));
+      if (sec <= 0) {
+        setRemaining("Requesting now");
+      } else {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        setRemaining(`${m}:${s.toString().padStart(2, "0")} until request`);
+      }
+    };
+    update();
+    const t = setInterval(update, 1000);
+    return () => clearInterval(t);
+  }, [scheduledFor]);
+  if (!scheduledFor || !remaining) return null;
+  return <span className="mt-2 block text-sm font-medium opacity-90">{remaining}</span>;
 }
 
 export default function TicketPage() {
@@ -199,7 +227,8 @@ export default function TicketPage() {
           )}
           {req?.scheduled_for && (
             <p className="mt-3 text-sm opacity-90">
-              Scheduled for {new Date(req.scheduled_for).toLocaleString()}
+              Scheduled for {formatDateTime(req.scheduled_for)}
+              <ScheduledCountdown scheduledFor={req.scheduled_for} />
             </p>
           )}
         </section>

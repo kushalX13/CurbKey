@@ -4,15 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { getStoredToken } from "../login/page";
+import { formatDateTime } from "../utils/date";
 
 type ReqT = {
   id: number;
+  ticket_id?: number;
   ticket_token?: string;
   status: string;
   scheduled_for?: string | null;
   exit?: { code: string; name: string };
   claimed_at?: string | null;
   claimed_phone_masked?: string | null;
+  car_number?: string | null;
+  vehicle_description?: string | null;
 };
 
 function authHeaders(): HeadersInit {
@@ -38,7 +42,26 @@ export default function ManagerPage() {
   const [resetResult, setResetResult] = useState<string | null>(null);
   const [tickResult, setTickResult] = useState<string | null>(null);
   const [drainResult, setDrainResult] = useState<string | null>(null);
+  const [managerVehicleDrafts, setManagerVehicleDrafts] = useState<Record<number, string>>({});
+  const [managerCarNumberDrafts, setManagerCarNumberDrafts] = useState<Record<number, string>>({});
   const createResultRef = useRef<HTMLDivElement>(null);
+
+  const saveManagerCarDetails = async (ticketId: number, carNumber: string, vehicleDescription: string) => {
+    const r = await fetch(`${API}/api/tickets/${ticketId}/car-number`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        car_number: carNumber || null,
+        vehicle_description: (vehicleDescription ?? "").trim() || null,
+      }),
+    });
+    if (r.status === 401) {
+      router.replace("/login?next=/manager");
+      return;
+    }
+    if (!r.ok) throw new Error(await r.text());
+    load(null, false).catch(() => {});
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined" && !getStoredToken()) {
@@ -250,31 +273,40 @@ export default function ManagerPage() {
           </div>
           {lastGuestUrl && (
             <>
-              <div className="mt-4 grid gap-3 rounded-lg bg-stone-50 p-4 sm:grid-cols-2">
-                {lastClaimCode && (
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-stone-500">Claim code</p>
-                    <p className="mt-1 font-mono text-xl font-bold tracking-widest text-stone-900">{lastClaimCode}</p>
-                    <p className="mt-0.5 text-xs text-stone-500">Valet tells customer this code</p>
+              <p className="mt-3 text-sm font-semibold text-stone-700">Step 1 — Customer scans this first (venue link)</p>
+              <p className="mt-0.5 text-xs text-stone-500">Customer scans → enters phone → enters 6-digit code → taps &quot;Text me my link&quot;. Do not give them the guest link below.</p>
+              {lastVenueSlug && (
+                <>
+                  <div className="mt-3 rounded-xl border-2 border-[var(--primary)] bg-white p-4">
+                    <p className="text-xs font-medium uppercase tracking-wider text-stone-500">Venue link (this QR only)</p>
+                    <div className="mt-2 flex flex-wrap items-start gap-4">
+                      <div className="rounded-lg border border-stone-200 bg-white p-3">
+                        <QRCodeSVG
+                          value={typeof window !== "undefined" ? `${window.location.origin}/v/${lastVenueSlug}` : `/v/${lastVenueSlug}`}
+                          size={180}
+                          level="M"
+                        />
+                      </div>
+                      <div>
+                        <p className="break-all text-sm font-medium text-stone-800">
+                          {typeof window !== "undefined" ? `${window.location.origin}/v/${lastVenueSlug}` : `/v/${lastVenueSlug}`}
+                        </p>
+                        {lastClaimCode && (
+                          <p className="mt-2 text-lg font-mono font-bold tracking-widest text-stone-900">Code: {lastClaimCode}</p>
+                        )}
+                        <p className="mt-1 text-xs text-stone-500">Give customer this code after they scan</p>
+                      </div>
+                    </div>
                   </div>
-                )}
-                {lastVenueSlug && (
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-stone-500">Venue claim link (static QR)</p>
-                    <p className="mt-1 break-all font-medium text-stone-800">
-                      {typeof window !== "undefined" ? `${window.location.origin}/v/${lastVenueSlug}` : `/v/${lastVenueSlug}`}
-                    </p>
-                    <p className="mt-0.5 text-xs text-stone-500">Customer scans → enters phone + code → gets link</p>
-                  </div>
-                )}
-              </div>
-              <p className="mt-2 truncate text-xs text-stone-500" title={lastGuestUrl}>{lastGuestUrl}</p>
-              <div className="mt-5 flex flex-col items-start gap-2">
-                <span className="text-sm font-medium text-stone-700">Guest QR code — customer scans to open ticket</span>
-                <div className="rounded-xl border border-stone-200 bg-white p-5 shadow-sm">
-                  <QRCodeSVG value={lastGuestUrl} size={200} level="M" />
+                </>
+              )}
+              <p className="mt-4 text-sm font-semibold text-stone-600">Step 2 — After they claim (guest link — for you, not for customer to scan)</p>
+              <p className="mt-0.5 truncate text-xs text-stone-500" title={lastGuestUrl}>{lastGuestUrl}</p>
+              <div className="mt-2 flex items-start gap-3">
+                <div className="rounded-lg border border-stone-200 bg-stone-50 p-2">
+                  <QRCodeSVG value={lastGuestUrl} size={100} level="M" />
                 </div>
-                <p className="text-xs text-stone-500">Valet can print or show on a tablet; scan opens the guest page.</p>
+                <p className="text-xs text-stone-500">They get this link after entering the code and tapping &quot;Text me my link&quot;. Use this to open guest page yourself.</p>
               </div>
             </>
           )}
@@ -329,7 +361,7 @@ export default function ManagerPage() {
                         Claimed ✓
                       </span>
                     )}
-                    {r.scheduled_for && <span className="ml-2 text-xs text-stone-500">scheduled {r.scheduled_for}</span>}
+                    {r.scheduled_for && <span className="ml-2 text-xs text-stone-500">{formatDateTime(r.scheduled_for)}</span>}
                   </div>
                   <div className="text-sm text-stone-600">
                     Exit {r.exit?.code ?? "—"}
@@ -340,6 +372,33 @@ export default function ManagerPage() {
                     )}
                   </div>
                 </div>
+                {r.ticket_id != null && (
+                  <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-stone-100 pt-2">
+                    <span className="text-xs font-medium text-stone-500">Vehicle</span>
+                    <input
+                      type="text"
+                      placeholder="e.g. McLaren 720"
+                      value={managerVehicleDrafts[r.id] ?? r.vehicle_description ?? ""}
+                      onChange={(e) => setManagerVehicleDrafts((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                      className="input-premium mt-1 w-36 text-sm"
+                    />
+                    <span className="text-xs font-medium text-stone-500">Car #</span>
+                    <input
+                      type="text"
+                      placeholder="e.g. ABC 1234"
+                      value={managerCarNumberDrafts[r.id] ?? r.car_number ?? ""}
+                      onChange={(e) => setManagerCarNumberDrafts((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                      className="input-premium mt-1 w-28 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => saveManagerCarDetails(r.ticket_id!, managerCarNumberDrafts[r.id] ?? r.car_number ?? "", managerVehicleDrafts[r.id] ?? r.vehicle_description ?? "").catch((e) => setErr(String(e)))}
+                      className="btn-primary mt-1 px-3 py-1.5 text-xs"
+                    >
+                      Save
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

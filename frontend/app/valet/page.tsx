@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { getStoredToken } from "../login/page";
+import { formatDateTime, parseUTC } from "../utils/date";
 
 type ReqT = {
   id: number;
@@ -53,7 +54,7 @@ function ScheduledCountdown({ scheduledFor }: { scheduledFor: string | null | un
       return;
     }
     const update = () => {
-      const at = new Date(scheduledFor).getTime();
+      const at = parseUTC(scheduledFor);
       const now = Date.now();
       const sec = Math.max(0, Math.floor((at - now) / 1000));
       if (sec <= 0) {
@@ -327,7 +328,7 @@ export default function ValetPage() {
                   </div>
                   {r.scheduled_for && (
                     <div className="mt-1.5 text-sm text-stone-600">
-                      Scheduled: <strong>{new Date(r.scheduled_for).toLocaleString()}</strong>
+                      Scheduled: <strong>{formatDateTime(r.scheduled_for)}</strong>
                       <ScheduledCountdown scheduledFor={r.scheduled_for} />
                     </div>
                   )}

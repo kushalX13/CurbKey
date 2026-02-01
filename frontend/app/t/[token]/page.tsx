@@ -192,7 +192,8 @@ export default function TicketPage() {
   }, [token]);
 
   const config = getStatusConfig(statusLine);
-  const canRequest = !req || ["No request yet", "SCHEDULED", "CLOSED", "CANCELED"].includes(statusLine);
+  const isAllSet = statusLine === "CLOSED" || statusLine === "PICKED_UP";
+  const canRequest = !isAllSet && (!req || ["No request yet", "SCHEDULED", "CANCELED"].includes(statusLine));
 
   const [outdoorTheme, setOutdoorTheme] = useState(false);
   useEffect(() => {

@@ -21,6 +21,16 @@ type ReqT = {
 
 type NewTicketResult = { id: number; claim_code: string; venue_slug: string };
 
+type ReceivedTicketT = {
+  id: number;
+  token: string;
+  claim_code: string;
+  claimed_at: string | null;
+  claimed_phone_masked?: string | null;
+  car_number?: string | null;
+  vehicle_description?: string | null;
+};
+
 function authHeaders(): HeadersInit {
   const t = getStoredToken();
   const h: HeadersInit = { "Content-Type": "application/json" };
@@ -89,8 +99,17 @@ export default function ValetPage() {
   const [newTicketCarNumber, setNewTicketCarNumber] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [stats, setStats] = useState<{ requests_today?: number; avg_time_to_ready_min?: number | null } | null>(null);
+  const [receivedTickets, setReceivedTickets] = useState<ReceivedTicketT[]>([]);
+  const [editingReceivedId, setEditingReceivedId] = useState<number | null>(null);
+  const [editingRequestId, setEditingRequestId] = useState<number | null>(null);
   const prevReqsRef = useRef<{ id: number; status: string }[]>([]);
   const PAGE_SIZE = 50;
+
+  const PencilIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0" aria-hidden>
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    </svg>
+  );
 
   const createTicket = async (count = 1) => {
     setCreateTicketLoading(true);
@@ -136,7 +155,9 @@ export default function ValetPage() {
       return;
     }
     if (!r.ok) throw new Error(await r.text());
+    setEditingReceivedId((prev) => (prev === ticketId ? null : prev));
     await load();
+    await loadReceivedTickets();
   };
 
   const saveNewTicketCarDetails = async () => {
@@ -205,6 +226,15 @@ export default function ValetPage() {
     setNextCursor(data.next_cursor ?? null);
   };
 
+  const loadReceivedTickets = async () => {
+    const vid = venueId ?? 1;
+    const r = await fetch(`${API}/api/received-tickets?venue_id=${vid}`, { headers: authHeaders() });
+    if (r.status === 401) return;
+    if (!r.ok) return;
+    const data = await r.json();
+    setReceivedTickets(data.tickets ?? []);
+  };
+
   const setStatus = async (id: number, status: string) => {
     const r = await fetch(`${API}/api/requests/${id}/status`, {
       method: "PATCH",
@@ -222,8 +252,13 @@ export default function ValetPage() {
   useEffect(() => {
     if (venueId === null) return;
     load(null, false).catch((e) => setErr(String(e)));
+    loadReceivedTickets().catch(() => {});
     const t = setInterval(() => load(null, false).catch(() => {}), 2000);
-    return () => clearInterval(t);
+    const t2 = setInterval(() => loadReceivedTickets().catch(() => {}), 2000);
+    return () => {
+      clearInterval(t);
+      clearInterval(t2);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [venueId, tab]);
 
@@ -361,6 +396,85 @@ export default function ValetPage() {
           )}
         </section>
 
+        <section className="card card-hover mb-6 p-5 sm:p-6">
+          <h2 className="text-lg font-semibold text-stone-900">Received cars</h2>
+          <p className="mt-1 text-sm text-stone-500">Cars that have been claimed (customer used code). Enter vehicle and plate here.</p>
+          {receivedTickets.length === 0 ? (
+            <p className="mt-4 text-sm text-stone-500">No claimed cars waiting. New claims will appear here.</p>
+          ) : (
+            <div className="mt-4 space-y-4">
+              {receivedTickets.map((t) => (
+                <div key={t.id} className="rounded-lg border border-stone-200 bg-stone-50/50 p-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono font-semibold text-stone-900">{t.claim_code}</span>
+                    {t.claimed_at && (
+                      <span className="text-xs text-stone-500">Claimed {formatDateTime(t.claimed_at)}</span>
+                    )}
+                    {t.claimed_phone_masked && (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-800">{t.claimed_phone_masked}</span>
+                    )}
+                    <a href={`/t/${t.token}`} className="text-xs font-medium text-[var(--primary)] hover:underline">Open guest</a>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    {(t.vehicle_description || t.car_number) && editingReceivedId !== t.id ? (
+                      <>
+                        <span className="text-sm text-stone-700">
+                          {t.vehicle_description || "—"} · {t.car_number || "—"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEditingReceivedId(t.id)}
+                          className="inline-flex items-center gap-1 rounded border border-stone-300 bg-white px-2 py-1 text-xs font-medium text-stone-600 transition hover:bg-stone-50"
+                          aria-label="Edit car details"
+                        >
+                          <PencilIcon />
+                          Edit
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="block text-xs font-medium text-stone-600">Vehicle</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. McLaren 720"
+                            value={vehicleDescriptionDrafts[t.id] ?? t.vehicle_description ?? ""}
+                            onChange={(e) => setVehicleDescriptionDrafts((prev) => ({ ...prev, [t.id]: e.target.value }))}
+                            className="input-premium mt-1 w-40"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-stone-600">Plate / Car #</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. ABC 1234"
+                            value={carNumberDrafts[t.id] ?? t.car_number ?? ""}
+                            onChange={(e) => setCarNumberDrafts((prev) => ({ ...prev, [t.id]: e.target.value }))}
+                            className="input-premium mt-1 w-32"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCarDetails(
+                              t.id,
+                              carNumberDrafts[t.id] ?? t.car_number ?? "",
+                              vehicleDescriptionDrafts[t.id] ?? t.vehicle_description ?? ""
+                            ).catch((e) => setErr(String(e)))
+                          }
+                          className="btn-primary px-3 py-2 text-sm"
+                        >
+                          Save
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         {err && <p className="mb-4 text-sm text-red-600">{err}</p>}
 
         <div className="mb-5 flex gap-0.5 rounded-lg bg-stone-100 p-1">
@@ -412,39 +526,63 @@ export default function ValetPage() {
                     )}
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <div>
-                      <label className="block text-xs font-medium text-stone-600">Vehicle</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. McLaren 720"
-                        value={vehicleDescriptionDrafts[r.ticket_id] ?? r.vehicle_description ?? ""}
-                        onChange={(e) => setVehicleDescriptionDrafts((prev) => ({ ...prev, [r.ticket_id]: e.target.value }))}
-                        className="input-premium mt-1 w-36"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-stone-600">Car #</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. ABC 1234"
-                        value={carNumberDrafts[r.ticket_id] ?? r.car_number ?? ""}
-                        onChange={(e) => setCarNumberDrafts((prev) => ({ ...prev, [r.ticket_id]: e.target.value }))}
-                        className="input-premium mt-1 w-32"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCarDetails(
-                          r.ticket_id,
-                          carNumberDrafts[r.ticket_id] ?? r.car_number ?? "",
-                          vehicleDescriptionDrafts[r.ticket_id] ?? r.vehicle_description ?? ""
-                        ).catch((e) => alert(String(e)))
-                      }
-                      className="btn-primary self-end px-3 py-2 text-sm"
-                    >
-                      Save
-                    </button>
+                    {(r.vehicle_description || r.car_number) && editingRequestId !== r.id ? (
+                      <>
+                        <span className="text-sm text-stone-700">
+                          {r.vehicle_description || "—"} · {r.car_number || "—"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEditingRequestId(r.id)}
+                          className="inline-flex items-center gap-1 rounded border border-stone-300 bg-white px-2 py-1 text-xs font-medium text-stone-600 transition hover:bg-stone-50"
+                          aria-label="Edit car details"
+                        >
+                          <PencilIcon />
+                          Edit
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="block text-xs font-medium text-stone-600">Vehicle</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. McLaren 720"
+                            value={vehicleDescriptionDrafts[r.ticket_id] ?? r.vehicle_description ?? ""}
+                            onChange={(e) => setVehicleDescriptionDrafts((prev) => ({ ...prev, [r.ticket_id]: e.target.value }))}
+                            className="input-premium mt-1 w-36"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-stone-600">Car #</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. ABC 1234"
+                            value={carNumberDrafts[r.ticket_id] ?? r.car_number ?? ""}
+                            onChange={(e) => setCarNumberDrafts((prev) => ({ ...prev, [r.ticket_id]: e.target.value }))}
+                            className="input-premium mt-1 w-32"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await setCarDetails(
+                                r.ticket_id,
+                                carNumberDrafts[r.ticket_id] ?? r.car_number ?? "",
+                                vehicleDescriptionDrafts[r.ticket_id] ?? r.vehicle_description ?? ""
+                              );
+                              setEditingRequestId((prev) => (prev === r.id ? null : prev));
+                            } catch (e) {
+                              alert(String(e));
+                            }
+                          }}
+                          className="btn-primary self-end px-3 py-2 text-sm"
+                        >
+                          Save
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

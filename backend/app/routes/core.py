@@ -516,6 +516,41 @@ def set_ticket_car_number(ticket_id: int):
     return jsonify({"ticket": _json(t)}), 200
 
 
+@bp.get("/api/received-tickets")
+@require_role(Role.VALET, Role.MANAGER)
+def list_received_tickets():
+    """
+    List tickets that have been claimed (customer used OTP) but not yet closed.
+    Valet/manager can enter car details here when the car is received.
+    Query: venue_id (required for MANAGER; VALET uses their venue).
+    """
+    venue_id = request.args.get("venue_id", type=int)
+    user = g.user
+    if user.role == Role.VALET:
+        venue_id = user.venue_id
+    if not venue_id:
+        abort(400, "venue_id is required")
+    q = (
+        Ticket.query.filter(Ticket.venue_id == venue_id)
+        .filter(Ticket.claimed_at.isnot(None))
+        .filter(Ticket.closed_at.is_(None))
+        .order_by(Ticket.claimed_at.desc())
+        .limit(50)
+    )
+    tickets = q.all()
+    out = []
+    for t in tickets:
+        obj = _json(t)
+        claimed_phone_masked = None
+        if t.claimed_phone and len(t.claimed_phone) >= 4:
+            claimed_phone_masked = "***-***-" + t.claimed_phone[-4:]
+        elif t.claimed_phone:
+            claimed_phone_masked = "***"
+        obj["claimed_phone_masked"] = claimed_phone_masked
+        out.append(obj)
+    return jsonify({"tickets": out})
+
+
 GUEST_LINK_EXPIRY_HOURS = 48
 
 

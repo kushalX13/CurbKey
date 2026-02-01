@@ -1,3 +1,5 @@
+import re
+import random
 from datetime import datetime, timedelta, timezone
 from flask import Blueprint, jsonify, request, abort, g
 from sqlalchemy import func, case
@@ -12,6 +14,21 @@ from app.auth import require_role, get_current_user
 from app.routes.notifs import queue_and_send, _render_message
 
 bp = Blueprint("core", __name__)
+
+CLAIM_CODE_EXPIRY_HOURS = 6
+
+
+def _slugify(name: str) -> str:
+    s = re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-")
+    return s or "venue"
+
+
+def _generate_claim_code(venue_id: int) -> str:
+    for _ in range(20):
+        code = "".join(random.choices("0123456789", k=6))
+        if not Ticket.query.filter_by(venue_id=venue_id, claim_code=code).first():
+            return code
+    abort(500, "could not generate unique claim code")
 
 ALLOWED_TRANSITIONS = {
     "SCHEDULED": {"REQUESTED", "CANCELED"},
@@ -37,7 +54,7 @@ def _json(model):
     if model is None:
         return None
     if isinstance(model, Venue):
-        return {"id": model.id, "name": model.name}
+        return {"id": model.id, "name": model.name, "slug": model.slug}
     if isinstance(model, Exit):
         return {"id": model.id, "venue_id": model.venue_id, "name": model.name, "code": model.code, "is_active": model.is_active}
     if isinstance(model, Zone):
@@ -49,13 +66,32 @@ def _json(model):
             "default_exit": _json(model.default_exit),
         }
     if isinstance(model, Ticket):
-        return {"id": model.id, "venue_id": model.venue_id, "token": model.token, "car_number": model.car_number, "created_at": model.created_at.isoformat()}
+        return {
+            "id": model.id,
+            "venue_id": model.venue_id,
+            "token": model.token,
+            "car_number": model.car_number,
+            "claim_code": model.claim_code,
+            "claimed_phone": model.claimed_phone,
+            "claimed_at": model.claimed_at.isoformat() if model.claimed_at else None,
+            "created_at": model.created_at.isoformat(),
+        }
     if isinstance(model, CarRequest):
+        ticket = model.ticket
+        claimed_phone_masked = None
+        if ticket and ticket.claimed_phone:
+            p = ticket.claimed_phone
+            if len(p) >= 4:
+                claimed_phone_masked = "***-***-" + p[-4:]
+            else:
+                claimed_phone_masked = "***"
         return {
             "id": model.id,
             "ticket_id": model.ticket_id,
-            "ticket_token": model.ticket.token,
-            "car_number": model.ticket.car_number if model.ticket else None,
+            "ticket_token": ticket.token if ticket else None,
+            "car_number": ticket.car_number if ticket else None,
+            "claimed_at": ticket.claimed_at.isoformat() if ticket and ticket.claimed_at else None,
+            "claimed_phone_masked": claimed_phone_masked,
             "exit_id": model.exit_id,
             "exit": _json(model.exit),
             "status": model.status,
@@ -157,7 +193,10 @@ def create_venue():
     name = (data.get("name") or "").strip()
     if not name:
         abort(400, "name is required")
-    v = Venue(name=name)
+    slug = (data.get("slug") or _slugify(name)).strip() or _slugify(name)
+    if Venue.query.filter_by(slug=slug).first():
+        abort(400, f"venue slug already exists: {slug}")
+    v = Venue(name=name, slug=slug)
     db.session.add(v)
     db.session.commit()
     return jsonify(_json(v)), 201
@@ -270,8 +309,12 @@ def seed_demo_venue():
     # Ensure at least one venue exists
     v = Venue.query.order_by(Venue.id.asc()).first()
     if not v:
-        v = Venue(name=data.get("venue_name") or "Demo Venue")
+        v = Venue(name=data.get("venue_name") or "Demo Venue", slug="demo-venue")
         db.session.add(v)
+        db.session.flush()
+    # Ensure first venue has demo slug for static QR /v/demo-venue
+    if v.slug != "demo-venue":
+        v.slug = "demo-venue"
         db.session.flush()
 
     # Fix ALL venues: each gets exactly A, B, C (one active per code)
@@ -324,15 +367,17 @@ def seed_demo_venue():
 @bp.post("/api/demo/ticket")
 @require_role(Role.MANAGER)
 def create_demo_ticket():
-    """Create a new ticket for demo; returns token for redirect to /t/<token>."""
+    """Create a new ticket for demo; returns token and claim_code."""
     venue = Venue.query.order_by(Venue.id.asc()).first()
     if not venue:
         abort(400, "no venue found; run /auth/seed first")
     token = Ticket.new_token()
-    t = Ticket(venue_id=venue.id, token=token)
+    claim_code = _generate_claim_code(venue.id)
+    expires = datetime.utcnow() + timedelta(hours=CLAIM_CODE_EXPIRY_HOURS)
+    t = Ticket(venue_id=venue.id, token=token, claim_code=claim_code, claim_code_expires_at=expires)
     db.session.add(t)
     db.session.commit()
-    return jsonify({"token": t.token}), 201
+    return jsonify({"token": t.token, "claim_code": claim_code}), 201
 
 
 @bp.post("/api/demo/tickets")
@@ -350,11 +395,13 @@ def create_demo_tickets():
         if not venue:
             abort(400, "no venue found; run /auth/seed or POST /api/demo/seed first")
     token = Ticket.new_token()
-    t = Ticket(venue_id=venue.id, token=token)
+    claim_code = _generate_claim_code(venue.id)
+    expires = datetime.utcnow() + timedelta(hours=CLAIM_CODE_EXPIRY_HOURS)
+    t = Ticket(venue_id=venue.id, token=token, claim_code=claim_code, claim_code_expires_at=expires)
     db.session.add(t)
     db.session.commit()
     guest_path = f"/t/{t.token}"
-    return jsonify({"token": t.token, "guest_url": guest_path}), 201
+    return jsonify({"token": t.token, "guest_url": guest_path, "claim_code": claim_code, "venue_slug": venue.slug}), 201
 
 
 @bp.post("/api/demo/reset")
@@ -403,13 +450,15 @@ def create_ticket():
     venue_id = data.get("venue_id")
     if not venue_id:
         abort(400, "venue_id is required")
-    Venue.query.get_or_404(int(venue_id))
+    venue = Venue.query.get_or_404(int(venue_id))
 
     token = Ticket.new_token()
-    t = Ticket(venue_id=int(venue_id), token=token)
+    claim_code = _generate_claim_code(venue.id)
+    expires = datetime.utcnow() + timedelta(hours=CLAIM_CODE_EXPIRY_HOURS)
+    t = Ticket(venue_id=int(venue_id), token=token, claim_code=claim_code, claim_code_expires_at=expires)
     db.session.add(t)
     db.session.commit()
-    return jsonify({"ticket": _json(t), "guest_path": f"/t/{t.token}"}), 201
+    return jsonify({"ticket": _json(t), "guest_path": f"/t/{t.token}", "claim_code": claim_code, "venue_slug": venue.slug}), 201
 
 
 @bp.patch("/api/tickets/<int:ticket_id>/car-number")

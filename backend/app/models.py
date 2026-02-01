@@ -32,6 +32,7 @@ class Venue(db.Model):
     __tablename__ = "venues"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
+    slug = db.Column(db.String(80), unique=True, nullable=True, index=True)  # for /v/<slug> claim flow
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     exits = db.relationship("Exit", backref="venue", lazy=True)
@@ -81,6 +82,10 @@ class Ticket(db.Model):
 
     token = db.Column(db.String(64), unique=True, nullable=False, index=True)
     car_number = db.Column(db.String(40), nullable=True)  # license plate / car id — valet sets when receiving car
+    claim_code = db.Column(db.String(12), nullable=True, index=True)  # 6-digit human code, unique per venue
+    claim_code_expires_at = db.Column(db.DateTime, nullable=True)
+    claimed_phone = db.Column(db.String(40), nullable=True)
+    claimed_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     closed_at = db.Column(db.DateTime, nullable=True)
 

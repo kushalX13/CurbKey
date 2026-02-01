@@ -91,8 +91,6 @@ export default function TicketPage() {
   const [selectedExit, setSelectedExit] = useState<number | null>(null);
   const [statusLine, setStatusLine] = useState<string>("Loading...");
   const [loading, setLoading] = useState(false);
-  const lastIdRef = useRef<number>(0);
-  const esRef = useRef<EventSource | null>(null);
   const reqRef = useRef<TicketResp["request"] | null>(null);
 
   const load = async () => {
@@ -147,40 +145,15 @@ export default function TicketPage() {
     }
   };
 
-  const connectSSE = () => {
-    if (esRef.current) esRef.current.close();
-    const url = `${API}/t/${token}/events?last_id=${lastIdRef.current}`;
-    const es = new EventSource(url);
-    esRef.current = es;
-    es.addEventListener("status", (evt: MessageEvent) => {
-      const payload = JSON.parse(evt.data);
-      lastIdRef.current = payload.id;
-      setStatusLine(payload.to_status);
-      setReq((prev) => {
-        const next = prev ? { ...prev, status: payload.to_status } : prev;
-        reqRef.current = next;
-        return next;
-      });
-      if (!reqRef.current) load().catch(() => {});
-    });
-    es.onerror = () => {
-      es.close();
-      setTimeout(connectSSE, 1500);
-    };
-  };
-
   useEffect(() => {
     load().catch((e) => setStatusLine(String(e)));
   }, [token]);
 
   useEffect(() => {
-    if (token) {
-      loadExits().catch((e) => setStatusLine(String(e)));
-      connectSSE();
-    }
-    return () => {
-      if (esRef.current) esRef.current.close();
-    };
+    if (!token) return;
+    loadExits().catch((e) => setStatusLine(String(e)));
+    const interval = setInterval(() => load().catch(() => {}), 4000);
+    return () => clearInterval(interval);
   }, [token]);
 
   const config = getStatusConfig(statusLine);

@@ -11,6 +11,8 @@ type ReqT = {
   status: string;
   scheduled_for?: string | null;
   exit?: { code: string; name: string };
+  claimed_at?: string | null;
+  claimed_phone_masked?: string | null;
 };
 
 function authHeaders(): HeadersInit {
@@ -30,6 +32,8 @@ export default function ManagerPage() {
   const PAGE_SIZE = 50;
   const [seedResult, setSeedResult] = useState<string | null>(null);
   const [lastGuestUrl, setLastGuestUrl] = useState<string | null>(null);
+  const [lastClaimCode, setLastClaimCode] = useState<string | null>(null);
+  const [lastVenueSlug, setLastVenueSlug] = useState<string | null>(null);
   const [createTicketResult, setCreateTicketResult] = useState<string | null>(null);
   const [resetResult, setResetResult] = useState<string | null>(null);
   const [tickResult, setTickResult] = useState<string | null>(null);
@@ -150,6 +154,8 @@ export default function ManagerPage() {
       const guestPath = data.guest_url ?? `/t/${data.token ?? ""}`;
       const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${guestPath}` : guestPath;
       setLastGuestUrl(fullUrl);
+      setLastClaimCode(data.claim_code ?? null);
+      setLastVenueSlug(data.venue_slug ?? null);
       setCreateTicketResult(`Created ticket → ${guestPath}`);
       load(null, false).catch(() => {});
       setTimeout(() => createResultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 150);
@@ -244,6 +250,24 @@ export default function ManagerPage() {
           </div>
           {lastGuestUrl && (
             <>
+              <div className="mt-4 grid gap-3 rounded-lg bg-stone-50 p-4 sm:grid-cols-2">
+                {lastClaimCode && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-stone-500">Claim code</p>
+                    <p className="mt-1 font-mono text-xl font-bold tracking-widest text-stone-900">{lastClaimCode}</p>
+                    <p className="mt-0.5 text-xs text-stone-500">Valet tells customer this code</p>
+                  </div>
+                )}
+                {lastVenueSlug && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-stone-500">Venue claim link (static QR)</p>
+                    <p className="mt-1 break-all font-medium text-stone-800">
+                      {typeof window !== "undefined" ? `${window.location.origin}/v/${lastVenueSlug}` : `/v/${lastVenueSlug}`}
+                    </p>
+                    <p className="mt-0.5 text-xs text-stone-500">Customer scans → enters phone + code → gets link</p>
+                  </div>
+                )}
+              </div>
               <p className="mt-2 truncate text-xs text-stone-500" title={lastGuestUrl}>{lastGuestUrl}</p>
               <div className="mt-5 flex flex-col items-start gap-2">
                 <span className="text-sm font-medium text-stone-700">Guest QR code — customer scans to open ticket</span>
@@ -300,6 +324,11 @@ export default function ManagerPage() {
                   <div className="min-w-0">
                     <span className="font-semibold text-stone-900">#{r.id}</span>
                     <span className="ml-2 rounded-full bg-stone-200 px-2.5 py-0.5 text-xs font-medium text-stone-700">{r.status}</span>
+                    {(r.claimed_at ?? r.claimed_phone_masked) && (
+                      <span className="ml-2 rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800" title={r.claimed_phone_masked ?? undefined}>
+                        Claimed ✓
+                      </span>
+                    )}
                     {r.scheduled_for && <span className="ml-2 text-xs text-stone-500">scheduled {r.scheduled_for}</span>}
                   </div>
                   <div className="text-sm text-stone-600">

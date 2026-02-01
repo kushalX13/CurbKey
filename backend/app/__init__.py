@@ -10,6 +10,7 @@ from app.routes.sse import bp as sse_bp
 from app.routes.auth import bp as auth_bp
 from app.routes.notifs import bp as notifs_bp
 from app.routes.scheduler import bp as scheduler_bp
+from app.routes.claim import bp as claim_bp
 from app.cli import register_cli
 
 
@@ -41,6 +42,7 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(notifs_bp)
     app.register_blueprint(scheduler_bp)
+    app.register_blueprint(claim_bp)
     register_cli(app)
 
     return app

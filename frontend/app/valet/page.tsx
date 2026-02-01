@@ -12,6 +12,8 @@ type ReqT = {
   status: string;
   scheduled_for?: string | null;
   exit?: { code: string; name: string };
+  claimed_at?: string | null;
+  claimed_phone_masked?: string | null;
 };
 
 function authHeaders(): HeadersInit {
@@ -208,6 +210,11 @@ export default function ValetPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-bold text-stone-900">Request #{r.id}</span>
                     <span className="rounded-full bg-stone-200 px-2.5 py-0.5 text-xs font-semibold text-stone-700">{r.status}</span>
+                    {(r.claimed_at ?? r.claimed_phone_masked) && (
+                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800" title={r.claimed_phone_masked ?? undefined}>
+                        Claimed ✓
+                      </span>
+                    )}
                   </div>
                   {r.scheduled_for && (
                     <div className="mt-1.5 text-sm text-stone-600">

@@ -19,7 +19,7 @@ def seed():
     email = (data.get("email") or "admin@curbkey.com").strip().lower()
     password = data.get("password") or "admin123"
 
-    v = Venue(name=venue_name)
+    v = Venue(name=venue_name, slug="demo-venue")
     db.session.add(v)
     db.session.flush()
 

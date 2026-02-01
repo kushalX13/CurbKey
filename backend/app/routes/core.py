@@ -385,7 +385,7 @@ def create_demo_ticket():
 @bp.post("/api/demo/tickets")
 @require_role(Role.MANAGER)
 def create_demo_tickets():
-    """Manager-only: create a new ticket for a venue. Body: { venue_id } (optional, defaults to first venue). Returns { token, guest_url }."""
+    """Manager-only: create ticket(s) for a venue. Body: { venue_id?, count?: 1 } (count max 10). Returns single or { tickets, count }."""
     data = request.get_json(silent=True) or {}
     venue_id = data.get("venue_id")
     if venue_id is not None:
@@ -396,14 +396,20 @@ def create_demo_tickets():
         venue = Venue.query.order_by(Venue.id.asc()).first()
         if not venue:
             abort(400, "no venue found; run /auth/seed or POST /api/demo/seed first")
-    token = Ticket.new_token()
-    claim_code = _generate_claim_code(venue.id)
-    expires = datetime.utcnow() + timedelta(hours=CLAIM_CODE_EXPIRY_HOURS)
-    t = Ticket(venue_id=venue.id, token=token, claim_code=claim_code, claim_code_expires_at=expires)
-    db.session.add(t)
+    count = min(max(1, int(data.get("count") or 1)), 10)
+    results = []
+    for _ in range(count):
+        token = Ticket.new_token()
+        claim_code = _generate_claim_code(venue.id)
+        expires = datetime.utcnow() + timedelta(hours=CLAIM_CODE_EXPIRY_HOURS)
+        t = Ticket(venue_id=venue.id, token=token, claim_code=claim_code, claim_code_expires_at=expires)
+        db.session.add(t)
+        db.session.flush()
+        results.append({"token": t.token, "guest_url": f"/t/{t.token}", "claim_code": claim_code, "venue_slug": venue.slug})
     db.session.commit()
-    guest_path = f"/t/{t.token}"
-    return jsonify({"token": t.token, "guest_url": guest_path, "claim_code": claim_code, "venue_slug": venue.slug}), 201
+    if count == 1:
+        return jsonify(results[0]), 201
+    return jsonify({"tickets": results, "count": count}), 201
 
 
 @bp.post("/api/demo/reset")
@@ -466,24 +472,31 @@ def create_ticket():
 @bp.post("/api/valet/tickets")
 @require_role(Role.VALET)
 def valet_create_ticket():
-    """Valet: create a ticket when a car arrives. Uses valet's venue. Returns claim code + venue link for customer."""
+    """Valet: create ticket(s) when cars arrive. Body: { count?: 1 } (default 1, max 10). Returns single obj or list."""
     user = g.user
     if not user.venue_id:
         abort(403, "valet has no venue")
     venue = Venue.query.get_or_404(user.venue_id)
-    token = Ticket.new_token()
-    claim_code = _generate_claim_code(venue.id)
-    expires = datetime.utcnow() + timedelta(hours=CLAIM_CODE_EXPIRY_HOURS)
-    t = Ticket(venue_id=venue.id, token=token, claim_code=claim_code, claim_code_expires_at=expires)
-    db.session.add(t)
+    data = request.get_json(silent=True) or {}
+    count = min(max(1, int(data.get("count") or 1)), 10)
+    results = []
+    for _ in range(count):
+        token = Ticket.new_token()
+        claim_code = _generate_claim_code(venue.id)
+        expires = datetime.utcnow() + timedelta(hours=CLAIM_CODE_EXPIRY_HOURS)
+        t = Ticket(venue_id=venue.id, token=token, claim_code=claim_code, claim_code_expires_at=expires)
+        db.session.add(t)
+        db.session.flush()
+        results.append({
+            "ticket": _json(t),
+            "guest_path": f"/t/{t.token}",
+            "claim_code": claim_code,
+            "venue_slug": venue.slug,
+        })
     db.session.commit()
-    guest_path = f"/t/{t.token}"
-    return jsonify({
-        "ticket": _json(t),
-        "guest_path": guest_path,
-        "claim_code": claim_code,
-        "venue_slug": venue.slug,
-    }), 201
+    if count == 1:
+        return jsonify(results[0]), 201
+    return jsonify({"tickets": results, "count": count}), 201
 
 
 @bp.patch("/api/tickets/<int:ticket_id>/car-number")
@@ -503,11 +516,18 @@ def set_ticket_car_number(ticket_id: int):
     return jsonify({"ticket": _json(t)}), 200
 
 
+GUEST_LINK_EXPIRY_HOURS = 48
+
+
 @bp.get("/t/<token>")
 def get_ticket(token: str):
     t = Ticket.query.filter_by(token=token).first()
     if not t:
         abort(404, "ticket not found")
+    if t.closed_at:
+        age_hours = (datetime.utcnow() - t.closed_at).total_seconds() / 3600
+        if age_hours > GUEST_LINK_EXPIRY_HOURS:
+            abort(404, "This link has expired.")
 
     # for MVP assume at most 1 active request per ticket
     req = CarRequest.query.filter_by(ticket_id=t.id).order_by(CarRequest.id.desc()).first()
@@ -794,6 +814,46 @@ def cancel_scheduled(token: str, req_id: int):
     return jsonify({"request": _json(r)})
 
 
+@bp.post("/t/<token>/request/<int:req_id>/picked-up")
+def guest_mark_picked_up(token: str, req_id: int):
+    """Guest: mark request as picked up when status is READY (car at exit)."""
+    t = Ticket.query.filter_by(token=token).first()
+    if not t:
+        abort(404, "ticket not found")
+
+    r = CarRequest.query.get_or_404(req_id)
+    if r.ticket_id != t.id:
+        abort(403, "not your request")
+    if str(r.status) != "READY":
+        abort(400, "can only mark picked up when car is ready")
+
+    now = datetime.utcnow()
+    r.status = RequestStatus.PICKED_UP.value
+    r.updated_at = now
+    db.session.add(StatusEvent(
+        ticket_id=t.id,
+        request_id=r.id,
+        from_status="READY",
+        to_status=RequestStatus.PICKED_UP.value,
+        note="Got my car (guest)",
+    ))
+    r.status = "CLOSED"
+    r.updated_at = now
+    db.session.add(StatusEvent(
+        ticket_id=t.id,
+        request_id=r.id,
+        from_status=RequestStatus.PICKED_UP.value,
+        to_status="CLOSED",
+        note="Auto-closed after pickup",
+    ))
+    if not t.closed_at:
+        t.closed_at = now
+        db.session.add(t)
+    db.session.commit()
+
+    return jsonify({"request": _json(r)})
+
+
 HISTORY_STATUSES_LIST = ["CLOSED", "CANCELED"]
 
 
@@ -1034,6 +1094,56 @@ def metrics():
         "max_seconds": max_seconds,
         "avg_req_to_ready_seconds": float(avg_req_to_ready or 0.0),
         "avg_req_to_picked_seconds": float(avg_req_to_picked or 0.0),
+    })
+
+
+@bp.get("/api/stats")
+@require_role(Role.VALET, Role.MANAGER)
+def simple_stats():
+    """Requests today + avg time to ready (minutes). For Valet/Manager dashboard."""
+    venue_id = getattr(g.user, "venue_id", None) or request.args.get("venue_id", type=int)
+    if not venue_id:
+        abort(400, "venue_id required")
+    user = g.user
+    if user.role == Role.VALET:
+        venue_id = user.venue_id
+    cutoff = datetime.utcnow() - timedelta(hours=24)
+    requests_today = (
+        db.session.query(func.count(CarRequest.id))
+        .join(Ticket, Ticket.id == CarRequest.ticket_id)
+        .filter(Ticket.venue_id == venue_id)
+        .filter(CarRequest.created_at >= cutoff)
+        .scalar()
+    )
+    req_ts = func.min(
+        case((StatusEvent.to_status == "REQUESTED", StatusEvent.created_at), else_=None)
+    )
+    rdy_ts = func.min(
+        case((StatusEvent.to_status == "READY", StatusEvent.created_at), else_=None)
+    )
+    subq = (
+        db.session.query(
+            StatusEvent.request_id.label("rid"),
+            req_ts.label("requested_at"),
+            rdy_ts.label("ready_at"),
+        )
+        .join(Ticket, Ticket.id == StatusEvent.ticket_id)
+        .filter(Ticket.venue_id == venue_id)
+        .filter(StatusEvent.created_at >= cutoff)
+        .group_by(StatusEvent.request_id)
+        .subquery()
+    )
+    avg_sec = db.session.query(
+        func.avg(func.extract("epoch", subq.c.ready_at - subq.c.requested_at))
+    ).filter(
+        subq.c.ready_at.isnot(None),
+        subq.c.requested_at.isnot(None),
+    ).scalar()
+    avg_time_to_ready_min = round(float(avg_sec or 0) / 60, 1) if avg_sec else None
+    return jsonify({
+        "venue_id": venue_id,
+        "requests_today": int(requests_today or 0),
+        "avg_time_to_ready_min": avg_time_to_ready_min,
     })
 
 

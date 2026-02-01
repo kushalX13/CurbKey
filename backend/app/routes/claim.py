@@ -67,7 +67,7 @@ def claim_confirm(venue_slug: str):
     if not ticket:
         return jsonify({"ok": False, "error": "invalid_code", "message": "Invalid or expired code. Please try again."}), 400
     if ticket.claim_code_expires_at and now > ticket.claim_code_expires_at:
-        return jsonify({"ok": False, "error": "invalid_code", "message": "Invalid or expired code. Please try again."}), 400
+        return jsonify({"ok": False, "error": "expired", "message": "Code expired. Ask the valet for a new code."}), 400
     if ticket.claimed_at and ticket.claimed_phone != phone:
         return jsonify({"ok": False, "error": "already_claimed", "message": "This ticket was already claimed by another number."}), 400
 

@@ -82,7 +82,8 @@ function ClaimForm() {
         return;
       }
       if (!r.ok) {
-        setErr(data.message || (r.status === 429 ? "Too many attempts. Please try again later." : "Invalid or expired code. Please try again."));
+        const msg = data.error === "expired" ? "Code expired. Ask the valet for a new code." : (data.message || (r.status === 429 ? "Too many attempts. Please try again later." : "Invalid code. Please try again."));
+        setErr(msg);
         return;
       }
       if (data.ok && data.guest_path) {
@@ -112,6 +113,9 @@ function ClaimForm() {
             </h1>
             <p className="mt-2 text-stone-600">
               Your valet link is ready. Text it to yourself or open it now.
+            </p>
+            <p className="mt-3 text-sm font-medium text-stone-500">
+              Link sent to your phone? You can close this tab.
             </p>
           </div>
 

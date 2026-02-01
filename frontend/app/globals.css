@@ -108,6 +108,29 @@ body {
 }
 
 /* Toast */
+/* High contrast / outdoor theme */
+[data-theme="outdoor"] {
+  --background: #f5f5f4;
+  --foreground: #0c0a09;
+  --surface: #ffffff;
+  --border: #a8a29e;
+  --primary: #0c4a6e;
+  --primary-hover: #075985;
+}
+[data-theme="outdoor"] body {
+  font-weight: 500;
+}
+[data-theme="outdoor"] .card {
+  border-width: 2px;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+}
+[data-theme="outdoor"] .btn-primary,
+[data-theme="outdoor"] .btn-accent {
+  font-weight: 700;
+  border: 2px solid rgba(0,0,0,0.1);
+}
+
+/* Toast */
 .toast-enter {
   animation: toast-in 0.2s ease-out;
 }

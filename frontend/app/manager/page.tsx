@@ -44,6 +44,7 @@ export default function ManagerPage() {
   const [drainResult, setDrainResult] = useState<string | null>(null);
   const [managerVehicleDrafts, setManagerVehicleDrafts] = useState<Record<number, string>>({});
   const [managerCarNumberDrafts, setManagerCarNumberDrafts] = useState<Record<number, string>>({});
+  const [stats, setStats] = useState<{ requests_today?: number; avg_time_to_ready_min?: number | null } | null>(null);
   const createResultRef = useRef<HTMLDivElement>(null);
 
   const saveManagerCarDetails = async (ticketId: number, carNumber: string, vehicleDescription: string) => {
@@ -155,14 +156,14 @@ export default function ManagerPage() {
     }
   };
 
-  const runCreateTicket = async () => {
+  const runCreateTicket = async (count = 1) => {
     setCreateTicketResult(null);
     setErr("");
     try {
       const res = await fetch(`${API}/api/demo/tickets`, {
         method: "POST",
         headers: authHeaders(),
-        body: JSON.stringify({}),
+        body: JSON.stringify(count > 1 ? { count } : {}),
       });
       if (res.status === 401) {
         router.replace("/login?next=/manager");
@@ -174,12 +175,13 @@ export default function ManagerPage() {
         return;
       }
       const data = await res.json();
-      const guestPath = data.guest_url ?? `/t/${data.token ?? ""}`;
+      const first = data.tickets ? data.tickets[0] : data;
+      const guestPath = first.guest_url ?? `/t/${first.token ?? ""}`;
       const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${guestPath}` : guestPath;
       setLastGuestUrl(fullUrl);
-      setLastClaimCode(data.claim_code ?? null);
-      setLastVenueSlug(data.venue_slug ?? null);
-      setCreateTicketResult(`Created ticket → ${guestPath}`);
+      setLastClaimCode(first.claim_code ?? null);
+      setLastVenueSlug(first.venue_slug ?? null);
+      setCreateTicketResult(data.count ? `Created ${data.count} tickets` : `Created ticket → ${guestPath}`);
       load(null, false).catch(() => {});
       setTimeout(() => createResultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 150);
     } catch (e) {
@@ -235,11 +237,34 @@ export default function ManagerPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reqTab]);
 
+  useEffect(() => {
+    const f = async () => {
+      const r = await fetch(`${API}/api/stats?venue_id=1`, { headers: authHeaders() });
+      if (r.ok) {
+        const data = await r.json();
+        setStats(data);
+      }
+    };
+    f();
+    const t = setInterval(f, 30000);
+    return () => clearInterval(t);
+  }, [API]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100">
       <main className="mx-auto max-w-3xl px-6 py-8 sm:py-10">
-        <header className="mb-8 flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">Manager</h1>
+        <header className="mb-8 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">Manager</h1>
+            {stats != null && (
+              <p className="mt-1 text-sm text-stone-500">
+                Today (venue 1): <strong>{stats.requests_today ?? 0}</strong> requests
+                {stats.avg_time_to_ready_min != null && (
+                  <> · Avg to ready: <strong>{stats.avg_time_to_ready_min}</strong> min</>
+                )}
+              </p>
+            )}
+          </div>
           <a href="/" className="text-sm font-medium text-stone-500 transition hover:text-stone-800">← Home</a>
         </header>
 
@@ -250,8 +275,11 @@ export default function ManagerPage() {
             <button onClick={runSeedDemo} className="btn-accent px-4 py-2.5 text-sm">
               Seed Demo
             </button>
-            <button onClick={runCreateTicket} className="btn-primary px-4 py-2.5 text-sm">
+            <button onClick={() => runCreateTicket(1)} className="btn-primary px-4 py-2.5 text-sm">
               Create Ticket
+            </button>
+            <button onClick={() => runCreateTicket(5)} className="rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50">
+              Create 5 tickets
             </button>
             <button
               onClick={copyGuestLink}

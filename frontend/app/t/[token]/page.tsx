@@ -122,24 +122,31 @@ export default function TicketPage() {
   const reqRef = useRef<TicketResp["request"] | null>(null);
 
   const load = async () => {
-    const r = await fetch(`${API}/t/${token}`);
-    if (!r.ok) {
-      const text = await r.text();
-      let msg = "Ticket not found (invalid token).";
-      try {
-        const j = JSON.parse(text);
-        if (j?.message && typeof j.message === "string") msg = j.message;
-      } catch {
-        if (r.status === 404) msg = "Ticket not found (invalid token).";
+    try {
+      const r = await fetch(`${API}/t/${token}`);
+      if (!r.ok) {
+        const text = await r.text();
+        let msg = "Ticket not found (invalid token).";
+        try {
+          const j = JSON.parse(text);
+          if (j?.message && typeof j.message === "string") msg = j.message;
+        } catch {
+          if (r.status === 404) msg = "Ticket not found (invalid token).";
+        }
+        throw new Error(msg);
       }
-      throw new Error(msg);
+      const data: TicketResp = await r.json();
+      setTicket(data.ticket);
+      setReq(data.request);
+      reqRef.current = data.request;
+      setStatusLine(data.request?.status ?? "No request yet");
+      if (data.request?.exit_id) setSelectedExit(data.request.exit_id);
+    } catch (e) {
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        throw new Error("Can't load. Check your connection.");
+      }
+      throw e;
     }
-    const data: TicketResp = await r.json();
-    setTicket(data.ticket);
-    setReq(data.request);
-    reqRef.current = data.request;
-    setStatusLine(data.request?.status ?? "No request yet");
-    if (data.request?.exit_id) setSelectedExit(data.request.exit_id);
   };
 
   const loadExits = async () => {
@@ -187,13 +194,30 @@ export default function TicketPage() {
   const config = getStatusConfig(statusLine);
   const canRequest = !req || ["No request yet", "SCHEDULED", "CLOSED", "CANCELED"].includes(statusLine);
 
+  const [outdoorTheme, setOutdoorTheme] = useState(false);
+  useEffect(() => {
+    const v = typeof window !== "undefined" && localStorage.getItem("curbkey_theme") === "outdoor";
+    setOutdoorTheme(!!v);
+    if (typeof document !== "undefined") {
+      document.documentElement.dataset.theme = v ? "outdoor" : "";
+    }
+  }, []);
+  const toggleOutdoor = () => {
+    const next = !outdoorTheme;
+    setOutdoorTheme(next);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("curbkey_theme", next ? "outdoor" : "");
+      document.documentElement.dataset.theme = next ? "outdoor" : "";
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100">
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100" role="main">
       <div className="mx-auto max-w-md px-4 py-8 sm:py-12">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-stone-900">CurbKey</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-stone-900" id="page-title">CurbKey</h1>
             {(() => {
               const type = ticket?.vehicle_description ?? "";
               const plate = ticket?.car_number ?? "";
@@ -206,13 +230,24 @@ export default function TicketPage() {
               ) : null;
             })()}
           </div>
-          <a
-            href="/"
-            className="text-sm text-stone-400 transition hover:text-stone-600"
-            aria-label="Back to home"
-          >
-            ← Home
-          </a>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleOutdoor}
+              className="text-xs font-medium text-stone-500 transition hover:text-stone-700"
+              aria-label={outdoorTheme ? "Turn off high contrast" : "High contrast (outdoor)"}
+            >
+              {outdoorTheme ? "High contrast on" : "High contrast"}
+            </button>
+            <button
+              type="button"
+              onClick={() => window.close()}
+              className="text-sm text-stone-400 transition hover:text-stone-600"
+              aria-label="Done, close this page"
+            >
+              Done
+            </button>
+          </div>
         </div>
 
         {/* Status card */}
@@ -224,6 +259,28 @@ export default function TicketPage() {
             <p className="mt-3 inline-block rounded-full bg-white/60 px-4 py-1.5 text-sm font-semibold">
               Exit {req.exit.code}
             </p>
+          )}
+          {statusLine === "READY" && req?.id && (
+            <button
+              type="button"
+              onClick={async () => {
+                setLoading(true);
+                try {
+                  const r = await fetch(`${API}/t/${token}/request/${req.id}/picked-up`, { method: "POST" });
+                  if (!r.ok) throw new Error(await r.text());
+                  await load();
+                } catch (e) {
+                  setStatusLine(String(e));
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading}
+              className="mt-4 w-full rounded-lg bg-emerald-600 py-3.5 text-base font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+              aria-label={loading ? "Marking as picked up" : "I got my car"}
+            >
+              {loading ? "…" : "Got my car"}
+            </button>
           )}
           {req?.scheduled_for && (
             <p className="mt-3 text-sm opacity-90">
@@ -239,11 +296,13 @@ export default function TicketPage() {
             <h3 className="text-lg font-semibold text-stone-900">Request your car</h3>
             <p className="mt-1 text-sm text-stone-500">Pick your pickup exit and when you’d like your car.</p>
 
-            <label className="mt-4 block text-sm font-medium text-stone-700">Pickup exit</label>
+            <label htmlFor="pickup-exit" className="mt-4 block text-sm font-medium text-stone-700">Pickup exit</label>
             <select
+              id="pickup-exit"
               value={selectedExit ?? ""}
               onChange={(e) => setSelectedExit(Number(e.target.value))}
               className="input-premium mt-1.5"
+              aria-describedby="pickup-exit-desc"
             >
               {exits.map((ex) => (
                 <option key={ex.id} value={ex.id}>
@@ -252,11 +311,12 @@ export default function TicketPage() {
               ))}
             </select>
 
-            <div className="mt-6">
+            <div className="mt-6" id="pickup-exit-desc">
               <button
                 onClick={() => requestCar()}
                 disabled={loading}
                 className="btn-primary w-full py-4 text-base disabled:opacity-60"
+                aria-label={loading ? "Requesting your car" : "Request my car now"}
               >
                 {loading ? "Requesting…" : "Request my car now"}
               </button>

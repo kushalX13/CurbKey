@@ -15,6 +15,8 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "CurbKey",
   description: "Valet request & scheduling",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "CurbKey" },
 };
 
 export default function RootLayout({

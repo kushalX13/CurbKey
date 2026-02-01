@@ -67,7 +67,10 @@ Open **http://127.0.0.1:3000**.
 
 **Frontend:** Vercel · **Backend:** Render / Fly / Railway · **DB:** Neon / Supabase / Render
 
-Health checks (`GET /healthz`), env vars, and CORS are set. Full plan: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+Health checks (`GET /healthz`), env vars, and CORS are set.
+
+- **Step-by-step (Vercel + Render + Supabase):** [docs/DEPLOY_TODAY.md](docs/DEPLOY_TODAY.md) — do this first.
+- Full reference: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 - **Vercel:** Set `NEXT_PUBLIC_API_BASE` to your backend URL.
 - **Backend:** Set `DATABASE_URL`, `JWT_SECRET_KEY`, `CORS_ORIGINS` (your Vercel URL). Health check path: `/healthz`.

@@ -40,7 +40,7 @@ function authHeaders(): HeadersInit {
 
 // Matches backend ALLOWED_TRANSITIONS: only show valid next actions
 const ACTIONS_BY_STATUS: Record<string, string[]> = {
-  SCHEDULED: [],
+  SCHEDULED: ["REQUESTED"], // "Get car" → then Retrieving → Ready
   REQUESTED: ["RETRIEVING"],
   ASSIGNED: ["RETRIEVING"],
   RETRIEVING: ["READY"],
@@ -51,6 +51,7 @@ const ACTIONS_BY_STATUS: Record<string, string[]> = {
 };
 
 const ACTION_LABELS: Record<string, string> = {
+  REQUESTED: "Get car",
   RETRIEVING: "Retrieving",
   READY: "Ready (car at exit)",
   PICKED_UP: "Picked Up",
@@ -102,6 +103,7 @@ export default function ValetPage() {
   const [receivedTickets, setReceivedTickets] = useState<ReceivedTicketT[]>([]);
   const [editingReceivedId, setEditingReceivedId] = useState<number | null>(null);
   const [editingRequestId, setEditingRequestId] = useState<number | null>(null);
+  const [requestsCollapsed, setRequestsCollapsed] = useState(false);
   const prevReqsRef = useRef<{ id: number; status: string }[]>([]);
   const PAGE_SIZE = 50;
 
@@ -477,24 +479,41 @@ export default function ValetPage() {
 
         {err && <p className="mb-4 text-sm text-red-600">{err}</p>}
 
-        <div className="mb-5 flex gap-0.5 rounded-lg bg-stone-100 p-1">
-          <button
-            type="button"
-            onClick={() => setTab("active")}
-            className={`flex-1 rounded-md px-3.5 py-2 text-sm font-medium transition sm:flex-none ${tab === "active" ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-900"}`}
-          >
-            Active
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("history")}
-            className={`flex-1 rounded-md px-3.5 py-2 text-sm font-medium transition sm:flex-none ${tab === "history" ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-900"}`}
-          >
-            History
-          </button>
-        </div>
-
-        <div className="grid gap-4">
+        <section className="rounded-xl border border-stone-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 p-4">
+            <h2 className="text-lg font-semibold text-stone-900">Requests</h2>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-0.5 rounded-lg bg-stone-100 p-1">
+                <button
+                  type="button"
+                  onClick={() => setTab("active")}
+                  className={`flex-1 rounded-md px-3.5 py-2 text-sm font-medium transition sm:flex-none ${tab === "active" ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-900"}`}
+                >
+                  Active
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab("history")}
+                  className={`flex-1 rounded-md px-3.5 py-2 text-sm font-medium transition sm:flex-none ${tab === "history" ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-900"}`}
+                >
+                  History
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRequestsCollapsed((c) => !c)}
+                className="rounded-lg border border-stone-300 bg-white p-2 text-stone-600 transition hover:bg-stone-50"
+                aria-label={requestsCollapsed ? "Expand requests list" : "Collapse requests list"}
+                aria-expanded={!requestsCollapsed}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={requestsCollapsed ? "" : "rotate-180"}>
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          {!requestsCollapsed && (
+        <div className="grid gap-4 p-4 pt-0">
           {reqs.map((r) => (
             <div key={r.id} className="card card-hover p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
@@ -622,6 +641,8 @@ export default function ValetPage() {
             </div>
           )}
         </div>
+          )}
+        </section>
       </main>
     </div>
   );

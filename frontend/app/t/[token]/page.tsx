@@ -163,10 +163,10 @@ export default function TicketPage() {
           ))}
         </select>
 
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           <button
             onClick={() => requestCar().catch((e) => alert(String(e)))}
-            className="flex-1 rounded-xl bg-zinc-900 py-3 font-bold text-white hover:bg-zinc-800"
+            className="flex-1 min-w-[120px] rounded-xl bg-zinc-900 py-3 font-bold text-white hover:bg-zinc-800"
           >
             Request now
           </button>
@@ -175,6 +175,18 @@ export default function TicketPage() {
             className="rounded-xl border-2 border-zinc-400 bg-white px-4 py-3 font-bold text-zinc-800 hover:bg-zinc-100"
           >
             In 1 min
+          </button>
+          <button
+            onClick={() => requestCar(5).catch((e) => alert(String(e)))}
+            className="rounded-xl border-2 border-zinc-400 bg-white px-4 py-3 font-bold text-zinc-800 hover:bg-zinc-100"
+          >
+            In 5 min
+          </button>
+          <button
+            onClick={() => requestCar(10).catch((e) => alert(String(e)))}
+            className="rounded-xl border-2 border-zinc-400 bg-white px-4 py-3 font-bold text-zinc-800 hover:bg-zinc-100"
+          >
+            In 10 min
           </button>
         </div>
 

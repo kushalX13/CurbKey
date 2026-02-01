@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { QRCodeSVG } from "qrcode.react";
 import { getStoredToken } from "../login/page";
 
 type ReqT = {
@@ -240,9 +241,18 @@ export default function ManagerPage() {
         {seedResult && <p className="mt-2 text-sm text-zinc-600">{seedResult}</p>}
         {createTicketResult && <p className="mt-2 text-sm text-zinc-600">{createTicketResult}</p>}
         {lastGuestUrl && (
-          <p className="mt-2 truncate text-xs text-zinc-500" title={lastGuestUrl}>
-            {lastGuestUrl}
-          </p>
+          <>
+            <p className="mt-2 truncate text-xs text-zinc-500" title={lastGuestUrl}>
+              {lastGuestUrl}
+            </p>
+            <div className="mt-3 flex flex-col items-start gap-2">
+              <span className="text-sm font-medium text-zinc-700">Guest QR code — customer scans to open ticket (no app)</span>
+              <div className="rounded-lg border-2 border-zinc-200 bg-white p-3">
+                <QRCodeSVG value={lastGuestUrl} size={200} level="M" />
+              </div>
+              <p className="text-xs text-zinc-500">Valet can print this or show on a tablet; scan opens the guest page.</p>
+            </div>
+          </>
         )}
         {resetResult && <p className="mt-2 text-sm text-zinc-600">{resetResult}</p>}
       </section>

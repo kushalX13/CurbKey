@@ -10,6 +10,7 @@ type ReqT = {
   ticket_token?: string;
   car_number?: string | null;
   status: string;
+  scheduled_for?: string | null;
   exit?: { code: string; name: string };
 };
 
@@ -38,11 +39,38 @@ const ACTION_LABELS: Record<string, string> = {
   PICKED_UP: "Picked Up",
 };
 
+function ScheduledCountdown({ scheduledFor }: { scheduledFor: string | null | undefined }) {
+  const [remaining, setRemaining] = useState<string>("");
+  useEffect(() => {
+    if (!scheduledFor) {
+      setRemaining("");
+      return;
+    }
+    const update = () => {
+      const at = new Date(scheduledFor).getTime();
+      const now = Date.now();
+      const sec = Math.max(0, Math.floor((at - now) / 1000));
+      if (sec <= 0) {
+        setRemaining("Due now");
+        return;
+      }
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      setRemaining(`${m}:${s.toString().padStart(2, "0")} remaining`);
+    };
+    update();
+    const t = setInterval(update, 1000);
+    return () => clearInterval(t);
+  }, [scheduledFor]);
+  if (!scheduledFor || !remaining) return null;
+  return <span className="ml-2 text-sm font-medium text-amber-700">{remaining}</span>;
+}
+
 export default function ValetPage() {
   const router = useRouter();
   const API = process.env.NEXT_PUBLIC_API_BASE!;
   const [tab, setTab] = useState<"active" | "history">("active");
-  const [venueId, setVenueId] = useState<number>(1);
+  const [venueId, setVenueId] = useState<number | null>(null);
   const [reqs, setReqs] = useState<ReqT[]>([]);
   const [nextCursor, setNextCursor] = useState<number | null>(null);
   const [err, setErr] = useState<string>("");
@@ -70,11 +98,25 @@ export default function ValetPage() {
     }
   }, [router]);
 
+  useEffect(() => {
+    const fetchMe = async () => {
+      const r = await fetch(`${API}/me`, { headers: authHeaders() });
+      if (r.ok) {
+        const data = await r.json();
+        setVenueId(data.venue_id != null ? Number(data.venue_id) : 1);
+      } else {
+        setVenueId(1);
+      }
+    };
+    fetchMe();
+  }, [API]);
+
   const load = async (cursor?: number | null, append = false) => {
+    const vid = venueId ?? 1;
     setErr("");
     const scope = tab === "active" ? "active" : "history";
     const params = new URLSearchParams({
-      venue_id: String(venueId),
+      venue_id: String(vid),
       scope,
       limit: String(PAGE_SIZE),
     });
@@ -106,6 +148,7 @@ export default function ValetPage() {
   };
 
   useEffect(() => {
+    if (venueId === null) return;
     load(null, false).catch((e) => setErr(String(e)));
     const t = setInterval(() => load(null, false).catch(() => {}), 2000);
     return () => clearInterval(t);
@@ -121,8 +164,8 @@ export default function ValetPage() {
         <label className="text-sm font-medium text-zinc-700">Venue ID</label>
         <input
           type="number"
-          value={venueId}
-          onChange={(e) => setVenueId(Number(e.target.value))}
+          value={venueId ?? 1}
+          onChange={(e) => setVenueId(Number(e.target.value) || 1)}
           className="w-20 rounded-lg border border-zinc-300 px-2 py-1.5 text-zinc-900"
         />
         <button
@@ -166,6 +209,12 @@ export default function ValetPage() {
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <div className="font-bold text-zinc-900">Request #{r.id}</div>
+                {r.scheduled_for && (
+                  <div className="text-sm text-zinc-600">
+                    Scheduled for: <strong>{new Date(r.scheduled_for).toLocaleString()}</strong>
+                    <ScheduledCountdown scheduledFor={r.scheduled_for} />
+                  </div>
+                )}
                 <div className="text-sm text-zinc-600">
                   Exit: <strong>{r.exit?.code ?? "—"}</strong> ({r.exit?.name ?? ""})
                 </div>

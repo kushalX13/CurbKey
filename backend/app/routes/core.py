@@ -438,6 +438,21 @@ def get_ticket(token: str):
     return jsonify({"ticket": _json(t), "request": _json(req)})
 
 
+@bp.get("/t/<token>/exits")
+def ticket_exits(token: str):
+    """Guest: list exits for this ticket's venue (no auth). Use this so guest page can load exits without calling /api/venues/:id."""
+    t = Ticket.query.filter_by(token=token).first()
+    if not t:
+        abort(404, "ticket not found")
+    exits = Exit.query.filter_by(venue_id=t.venue_id, is_active=True).order_by(Exit.id.asc()).all()
+    by_code = {}
+    for e in exits:
+        if e.code not in by_code:
+            by_code[e.code] = e
+    ordered = [by_code[c] for c in EXIT_CODE_ORDER if c in by_code]
+    return jsonify([_json(e) for e in ordered])
+
+
 @bp.get("/t/<token>/recommendations")
 def guest_recommendations(token: str):
     t = Ticket.query.filter_by(token=token).first()

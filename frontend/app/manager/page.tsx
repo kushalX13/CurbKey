@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { getStoredToken } from "../login/page";
@@ -34,6 +34,7 @@ export default function ManagerPage() {
   const [resetResult, setResetResult] = useState<string | null>(null);
   const [tickResult, setTickResult] = useState<string | null>(null);
   const [drainResult, setDrainResult] = useState<string | null>(null);
+  const createResultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined" && !getStoredToken()) {
@@ -146,10 +147,12 @@ export default function ManagerPage() {
         return;
       }
       const data = await res.json();
-      const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${data.guest_url}` : data.guest_url;
+      const guestPath = data.guest_url ?? `/t/${data.token ?? ""}`;
+      const fullUrl = typeof window !== "undefined" ? `${window.location.origin}${guestPath}` : guestPath;
       setLastGuestUrl(fullUrl);
-      setCreateTicketResult(`Created ticket → ${data.guest_url}`);
+      setCreateTicketResult(`Created ticket → ${guestPath}`);
       load(null, false).catch(() => {});
+      setTimeout(() => createResultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 150);
     } catch (e) {
       setCreateTicketResult(String(e));
     }
@@ -239,7 +242,9 @@ export default function ManagerPage() {
           </button>
         </div>
         {seedResult && <p className="mt-2 text-sm text-zinc-600">{seedResult}</p>}
-        {createTicketResult && <p className="mt-2 text-sm text-zinc-600">{createTicketResult}</p>}
+        <div ref={createResultRef}>
+          {createTicketResult && <p className="mt-2 text-sm text-zinc-600">{createTicketResult}</p>}
+        </div>
         {lastGuestUrl && (
           <>
             <p className="mt-2 truncate text-xs text-zinc-500" title={lastGuestUrl}>

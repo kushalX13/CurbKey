@@ -51,8 +51,8 @@ export default function TicketPage() {
     if (data.request?.exit_id) setSelectedExit(data.request.exit_id);
   };
 
-  const loadExits = async (venue_id: number) => {
-    const r = await fetch(`${API}/api/venues/${venue_id}/exits`);
+  const loadExits = async () => {
+    const r = await fetch(`${API}/t/${token}/exits`);
     if (!r.ok) throw new Error(await r.text());
     const data: ExitT[] = await r.json();
     setExits(data);
@@ -114,15 +114,15 @@ export default function TicketPage() {
   }, [token]);
 
   useEffect(() => {
-    if (venueId) {
-      loadExits(venueId).catch((e) => setStatusLine(String(e)));
+    if (token) {
+      loadExits().catch((e) => setStatusLine(String(e)));
       connectSSE();
     }
     return () => {
       if (esRef.current) esRef.current.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [venueId]);
+  }, [token]);
 
   return (
     <div className="min-h-screen bg-zinc-100 py-8">

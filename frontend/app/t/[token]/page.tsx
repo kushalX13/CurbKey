@@ -13,6 +13,7 @@ type TicketResp = {
     exit_id: number;
     scheduled_for?: string | null;
     exit?: { id: number; code: string; name: string };
+    tip_eligible?: boolean;
   };
 };
 
@@ -119,6 +120,7 @@ export default function TicketPage() {
   const [selectedExit, setSelectedExit] = useState<number | null>(null);
   const [statusLine, setStatusLine] = useState<string>("Loading...");
   const [loading, setLoading] = useState(false);
+  const [tipSubmitted, setTipSubmitted] = useState(false);
   const reqRef = useRef<TicketResp["request"] | null>(null);
 
   const load = async () => {
@@ -290,6 +292,50 @@ export default function TicketPage() {
             </p>
           )}
         </section>
+
+        {/* Tip your valet (when All set and tip_eligible) */}
+        {isAllSet && req?.tip_eligible && req?.id && (
+          <section className="card mb-8 p-6">
+            <h3 className="text-lg font-semibold text-stone-900">Tip your valet</h3>
+            <p className="mt-1 text-sm text-stone-500">Thank your valet with a tip. No payment is taken—this records your intent.</p>
+            {tipSubmitted ? (
+              <p className="mt-4 rounded-lg bg-emerald-50 p-4 text-center font-medium text-emerald-800">Thanks! Your tip was recorded.</p>
+            ) : (
+              <div className="mt-4 flex flex-wrap justify-center gap-3">
+                {[
+                  { label: "$2", cents: 200 },
+                  { label: "$5", cents: 500 },
+                  { label: "$10", cents: 1000 },
+                ].map(({ label, cents }) => (
+                  <button
+                    key={cents}
+                    type="button"
+                    disabled={loading}
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        const r = await fetch(`${API}/t/${token}/request/${req.id}/tip`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ amount_cents: cents }),
+                        });
+                        if (!r.ok) throw new Error(await r.text());
+                        setTipSubmitted(true);
+                      } catch (e) {
+                        setStatusLine(String(e));
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    className="rounded-xl border-2 border-stone-300 bg-white px-6 py-3.5 text-base font-semibold text-stone-800 transition hover:border-stone-400 hover:bg-stone-50 disabled:opacity-60"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Request section */}
         {canRequest && (

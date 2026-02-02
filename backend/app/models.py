@@ -108,13 +108,17 @@ class Request(db.Model):
     assigned_to = db.Column(db.String(80), nullable=True)
     assigned_at = db.Column(db.DateTime, nullable=True)
     zone_id = db.Column(db.Integer, db.ForeignKey("zones.id"), nullable=True)
+    delivered_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)  # valet who marked READY (or PICKED_UP)
+    delivered_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     exit = db.relationship("Exit")
     zone = db.relationship("Zone", foreign_keys=[zone_id])
+    delivered_by = db.relationship("User", foreign_keys=[delivered_by_user_id])
 
     events = db.relationship("StatusEvent", backref="request", lazy=True)
+    tips = db.relationship("Tip", backref="request", lazy=True)
 
 
 class StatusEvent(db.Model):
@@ -127,6 +131,16 @@ class StatusEvent(db.Model):
     to_status = db.Column(db.String(30), nullable=False)
 
     note = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class Tip(db.Model):
+    """Tip intent (demo: PENDING only; later add Stripe for PAID)."""
+    __tablename__ = "tips"
+    id = db.Column(db.Integer, primary_key=True)
+    request_id = db.Column(db.Integer, db.ForeignKey("requests.id"), nullable=False, index=True)
+    amount_cents = db.Column(db.Integer, nullable=False)
+    status = db.Column(db.String(20), default="PENDING", nullable=False)  # PENDING | PAID (when Stripe added)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 

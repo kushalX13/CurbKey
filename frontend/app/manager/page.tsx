@@ -79,6 +79,7 @@ export default function ManagerPage() {
   const [editingRequestId, setEditingRequestId] = useState<number | null>(null);
   const [requestsCollapsed, setRequestsCollapsed] = useState(false);
   const [stats, setStats] = useState<{ requests_today?: number; avg_time_to_ready_min?: number | null } | null>(null);
+  const [tipsData, setTipsData] = useState<{ tips: { id: number; request_id: number; amount_cents: number; status: string; created_at: string }[]; by_valet: { user_id: number; email: string | null; total_cents: number; count: number }[] } | null>(null);
   const createResultRef = useRef<HTMLDivElement>(null);
 
   const PencilIcon = () => (
@@ -135,6 +136,14 @@ export default function ManagerPage() {
     if (!r.ok) return;
     const data = await r.json();
     setReceivedTickets(data.tickets ?? []);
+  };
+
+  const loadTips = async () => {
+    const r = await fetch(`${API}/api/tips?venue_id=1`, { headers: authHeaders() });
+    if (r.status === 401) return;
+    if (!r.ok) return;
+    const data = await r.json();
+    setTipsData({ tips: data.tips ?? [], by_valet: data.by_valet ?? [] });
   };
 
   const setRequestStatus = async (reqId: number, status: string) => {
@@ -296,11 +305,14 @@ export default function ManagerPage() {
   useEffect(() => {
     load(null, false).catch((e) => setErr(String(e)));
     loadReceivedTickets().catch(() => {});
+    loadTips().catch(() => {});
     const t = setInterval(() => load(null, false).catch(() => {}), 5000);
     const t2 = setInterval(() => loadReceivedTickets().catch(() => {}), 5000);
+    const t3 = setInterval(() => loadTips().catch(() => {}), 5000);
     return () => {
       clearInterval(t);
       clearInterval(t2);
+      clearInterval(t3);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reqTab]);
@@ -421,6 +433,42 @@ export default function ManagerPage() {
           </div>
           {tickResult && <p className="mt-2 text-sm text-stone-600">{tickResult}</p>}
           {drainResult && <p className="mt-2 text-sm text-stone-600">{drainResult}</p>}
+        </section>
+
+        <section className="card card-hover mb-6 p-6 sm:p-7">
+          <h2 className="text-lg font-semibold text-stone-900">Tip pledges</h2>
+          <p className="mt-1 text-sm text-stone-500">Tips recorded by guests (demo: no payment taken). Totals by valet who delivered.</p>
+          {tipsData && (
+            <>
+              {tipsData.by_valet.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Totals by valet</p>
+                  {tipsData.by_valet.map((v) => (
+                    <div key={v.user_id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-stone-200 bg-stone-50/50 p-3">
+                      <span className="font-medium text-stone-800">{v.email ?? (v.user_id === 0 ? "Unknown" : `Valet #${v.user_id}`)}</span>
+                      <span className="font-mono font-semibold text-stone-900">${(v.total_cents / 100).toFixed(2)}</span>
+                      <span className="text-xs text-stone-500">{v.count} tip{v.count !== 1 ? "s" : ""}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-stone-500">No tips pledged yet.</p>
+              )}
+              {tipsData.tips.length > 0 && (
+                <div className="mt-4 border-t border-stone-200 pt-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Recent pledges</p>
+                  <ul className="mt-2 space-y-1.5">
+                    {tipsData.tips.slice(0, 10).map((tip) => (
+                      <li key={tip.id} className="flex justify-between text-sm text-stone-700">
+                        <span>Request #{tip.request_id}</span>
+                        <span className="font-mono font-medium">${(tip.amount_cents / 100).toFixed(2)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          )}
         </section>
 
         <section className="card card-hover mb-6 p-6 sm:p-7">

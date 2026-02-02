@@ -8,7 +8,7 @@ from werkzeug.security import generate_password_hash
 from app.extensions import db
 from app.models import (
     Venue, Exit, Zone, Ticket, Request as CarRequest, StatusEvent,
-    RequestStatus, Role, User, NotificationSubscription, NotificationOutbox,
+    RequestStatus, Role, User, NotificationSubscription, NotificationOutbox, Tip,
 )
 from app.auth import require_role, get_current_user
 from app.routes.notifs import queue_and_send, _render_message
@@ -86,7 +86,7 @@ def _json(model):
                 claimed_phone_masked = "***-***-" + p[-4:]
             else:
                 claimed_phone_masked = "***"
-        return {
+        out = {
             "id": model.id,
             "ticket_id": model.ticket_id,
             "ticket_token": ticket.token if ticket else None,
@@ -104,7 +104,13 @@ def _json(model):
             "zone": {"id": model.zone.id, "name": model.zone.name} if model.zone else None,
             "created_at": model.created_at.isoformat(),
             "updated_at": model.updated_at.isoformat(),
+            "delivered_by_user_id": model.delivered_by_user_id,
         }
+        # Guest: can tip when request is done and we know who delivered
+        out["tip_eligible"] = (
+            str(model.status) in ("CLOSED", "PICKED_UP") and model.delivered_by_user_id is not None
+        )
+        return out
     if isinstance(model, StatusEvent):
         return {
             "id": int(model.id),
@@ -889,6 +895,38 @@ def guest_mark_picked_up(token: str, req_id: int):
     return jsonify({"request": _json(r)})
 
 
+@bp.post("/t/<token>/request/<int:req_id>/tip")
+def guest_create_tip(token: str, req_id: int):
+    """Guest: record tip intent (PENDING). Request must belong to ticket and be tip_eligible (CLOSED + delivered_by set)."""
+    t = Ticket.query.filter_by(token=token).first()
+    if not t:
+        abort(404, "ticket not found")
+    r = CarRequest.query.get_or_404(req_id)
+    if r.ticket_id != t.id:
+        abort(403, "not your request")
+    if str(r.status) not in ("CLOSED", "PICKED_UP") or r.delivered_by_user_id is None:
+        abort(400, "cannot tip this request")
+
+    data = request.get_json(silent=True) or {}
+    amount_cents = data.get("amount_cents")
+    if amount_cents is None:
+        abort(400, "amount_cents required")
+    try:
+        amount_cents = int(amount_cents)
+    except (TypeError, ValueError):
+        abort(400, "amount_cents must be integer")
+    if amount_cents < 100 or amount_cents > 5000:  # $1–$50
+        abort(400, "amount_cents must be between 100 and 5000")
+
+    tip = Tip(request_id=r.id, amount_cents=amount_cents, status="PENDING")
+    db.session.add(tip)
+    db.session.commit()
+    return jsonify({
+        "tip": {"id": tip.id, "request_id": tip.request_id, "amount_cents": tip.amount_cents, "status": tip.status},
+        "message": "Thanks! Your tip was recorded.",
+    }), 201
+
+
 HISTORY_STATUSES_LIST = ["CLOSED", "CANCELED"]
 
 
@@ -939,6 +977,46 @@ def list_requests():
     return jsonify({
         "requests": [_json(r) for r in reqs],
         "next_cursor": next_cursor,
+    })
+
+
+@bp.get("/api/tips")
+@require_role(Role.VALET, Role.MANAGER)
+def list_tips():
+    """Manager/valet: list tip pledges. Query: venue_id (required for manager). Returns tips and totals by valet."""
+    venue_id = request.args.get("venue_id", type=int)
+    user = g.user
+    if user.role == Role.VALET:
+        venue_id = user.venue_id
+    if not venue_id:
+        abort(400, "venue_id is required")
+
+    tips = (
+        Tip.query.join(CarRequest, CarRequest.id == Tip.request_id)
+        .join(Ticket, Ticket.id == CarRequest.ticket_id)
+        .filter(Ticket.venue_id == venue_id)
+        .order_by(Tip.created_at.desc())
+        .limit(100)
+        .all()
+    )
+    by_valet = {}
+    for tip in tips:
+        r = tip.request
+        uid = r.delivered_by_user_id
+        if uid is None:
+            uid = 0
+        if uid not in by_valet:
+            u = r.delivered_by
+            by_valet[uid] = {"user_id": uid, "email": u.email if u else None, "total_cents": 0, "count": 0}
+        by_valet[uid]["total_cents"] += tip.amount_cents
+        by_valet[uid]["count"] += 1
+
+    return jsonify({
+        "tips": [
+            {"id": t.id, "request_id": t.request_id, "amount_cents": t.amount_cents, "status": t.status, "created_at": t.created_at.isoformat()}
+            for t in tips
+        ],
+        "by_valet": list(by_valet.values()),
     })
 
 
@@ -1006,6 +1084,14 @@ def update_request_status(req_id: int):
         previous = r.status
         r.status = new_status.value
         r.updated_at = datetime.utcnow()
+        now = datetime.utcnow()
+        # Who delivered = valet who marked READY (or PICKED_UP if READY never happened)
+        if new == "READY":
+            r.delivered_by_user_id = user.id
+            r.delivered_at = now
+        elif new == "PICKED_UP" and r.delivered_by_user_id is None:
+            r.delivered_by_user_id = user.id
+            r.delivered_at = now
 
         ev = StatusEvent(
             ticket_id=r.ticket_id,

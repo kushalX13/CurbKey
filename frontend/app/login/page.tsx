@@ -57,7 +57,7 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 flex items-center justify-center p-6">
-      <main className="w-full max-w-md card p-8">
+      <main className="w-full max-w-md card p-8" role="main">
         <h1 className="text-2xl font-bold tracking-tight text-stone-900">Sign in</h1>
         <p className="mt-1 text-sm text-stone-500">Valet or Manager</p>
 
@@ -93,7 +93,7 @@ function LoginForm() {
         </form>
 
         <p className="mt-6 text-xs text-stone-400">
-          After seed: admin@curbkey.com / admin123
+          Demo: admin@curbkey.com / admin123
         </p>
         <a href="/" className="mt-4 inline-block text-sm text-stone-500 transition hover:text-stone-700">
           ← Back to home

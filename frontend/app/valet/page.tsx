@@ -285,9 +285,9 @@ export default function ValetPage() {
 
         <section className="card card-hover mb-6 p-5 sm:p-6">
           <h2 className="text-lg font-semibold text-stone-900">Received cars</h2>
-          <p className="mt-1 text-sm text-stone-500">Cars that have been claimed (customer used code). Enter vehicle and plate here.</p>
+          <p className="mt-1 text-sm text-stone-500">Claimed cars. Enter vehicle and plate here.</p>
           {receivedTickets.length === 0 ? (
-            <p className="mt-4 text-sm text-stone-500">No claimed cars waiting. New claims will appear here.</p>
+            <p className="mt-4 text-sm text-stone-500">No claimed cars yet.</p>
           ) : (
             <div className="mt-4 space-y-4">
               {receivedTickets.map((t) => (

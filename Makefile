@@ -1,5 +1,5 @@
 # CurbKey — one-command dev and demo
-# Run from project root: cd /path/to/CrubKey && make dev
+# Run from project root: cd /path/to/CurbKey && make dev
 
 .PHONY: dev demo db db-down test worker
 

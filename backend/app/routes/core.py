@@ -50,7 +50,7 @@ RESCHEDULE_COOLDOWN_SECONDS = 10     # min seconds between reschedule/cancel cha
 CANCEL_MIN_SECONDS_BEFORE = 10      # no cancel within this many seconds of scheduled_for (use 30 to match reschedule)
 
 def _json(model):
-    # small helper for demo JSON
+    # serialize to JSON for API responses
     if model is None:
         return None
     if isinstance(model, Venue):
@@ -106,7 +106,6 @@ def _json(model):
             "updated_at": model.updated_at.isoformat(),
             "delivered_by_user_id": model.delivered_by_user_id,
         }
-        # Guest: can tip when request is done and we know who delivered
         out["tip_eligible"] = (
             str(model.status) in ("CLOSED", "PICKED_UP") and model.delivered_by_user_id is not None
         )
@@ -570,7 +569,6 @@ def get_ticket(token: str):
         if age_hours > GUEST_LINK_EXPIRY_HOURS:
             abort(404, "This link has expired.")
 
-    # for MVP assume at most 1 active request per ticket
     req = CarRequest.query.filter_by(ticket_id=t.id).order_by(CarRequest.id.desc()).first()
     return jsonify({"ticket": _json(t), "request": _json(req)})
 
@@ -897,7 +895,7 @@ def guest_mark_picked_up(token: str, req_id: int):
 
 @bp.post("/t/<token>/request/<int:req_id>/tip")
 def guest_create_tip(token: str, req_id: int):
-    """Guest: record tip intent (PENDING). Request must belong to ticket and be tip_eligible (CLOSED + delivered_by set)."""
+    """Record a tip for a request. Request must be closed and have a deliverer."""
     t = Ticket.query.filter_by(token=token).first()
     if not t:
         abort(404, "ticket not found")
@@ -915,7 +913,7 @@ def guest_create_tip(token: str, req_id: int):
         amount_cents = int(amount_cents)
     except (TypeError, ValueError):
         abort(400, "amount_cents must be integer")
-    if amount_cents < 100 or amount_cents > 5000:  # $1–$50
+    if amount_cents < 100 or amount_cents > 5000:
         abort(400, "amount_cents must be between 100 and 5000")
 
     tip = Tip(request_id=r.id, amount_cents=amount_cents, status="PENDING")
@@ -983,7 +981,7 @@ def list_requests():
 @bp.get("/api/tips")
 @require_role(Role.VALET, Role.MANAGER)
 def list_tips():
-    """Manager/valet: list tip pledges. Query: venue_id (required for manager). Returns tips and totals by valet."""
+    """List tips for a venue. Returns recent tips and totals per valet."""
     venue_id = request.args.get("venue_id", type=int)
     user = g.user
     if user.role == Role.VALET:
@@ -1094,7 +1092,7 @@ def update_request_status(req_id: int):
         r.status = new_status.value
         r.updated_at = datetime.utcnow()
         now = datetime.utcnow()
-        # Who delivered = valet who marked READY (or PICKED_UP if READY never happened)
+        # track who delivered (valet who marked READY, or PICKED_UP if READY was skipped)
         if new == "READY":
             r.delivered_by_user_id = user.id
             r.delivered_at = now

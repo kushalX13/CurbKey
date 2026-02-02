@@ -216,8 +216,7 @@ export default function TicketPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100" role="main">
-      <div className="mx-auto max-w-md px-4 py-8 sm:py-12">
-        {/* Header */}
+      <div className="mx-auto max-w-md px-4 py-8 sm:px-6 sm:py-12">
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-stone-900" id="page-title">CurbKey</h1>
@@ -253,8 +252,7 @@ export default function TicketPage() {
           </div>
         </div>
 
-        {/* Status card */}
-        <section className={`mb-8 rounded-2xl p-6 ${config.bg} ${config.text}`}>
+        <section className={`mb-6 rounded-2xl p-6 ${config.bg} ${config.text}`}>
           <p className="text-sm font-medium uppercase tracking-wider opacity-80">Status</p>
           <h2 className="mt-2 text-2xl font-bold tracking-tight">{config.label}</h2>
           {config.sublabel && <p className="mt-2 text-[15px] leading-relaxed opacity-90">{config.sublabel}</p>}
@@ -293,13 +291,12 @@ export default function TicketPage() {
           )}
         </section>
 
-        {/* Tip your valet (when All set and tip_eligible) */}
         {isAllSet && req?.tip_eligible && req?.id && (
-          <section className="card mb-8 p-6">
+          <section className="card mb-6 p-6">
             <h3 className="text-lg font-semibold text-stone-900">Tip your valet</h3>
             <p className="mt-1 text-sm text-stone-500">Thank your valet with a tip.</p>
             {tipSubmitted ? (
-              <p className="mt-4 rounded-lg bg-emerald-50 p-4 text-center font-medium text-emerald-800">Thanks! Your tip was recorded.</p>
+              <p className="mt-4 rounded-lg bg-emerald-50 p-4 text-center font-medium text-emerald-800">Thanks, your tip was recorded.</p>
             ) : (
               <div className="mt-4 flex flex-wrap justify-center gap-3">
                 {[
@@ -337,11 +334,10 @@ export default function TicketPage() {
           </section>
         )}
 
-        {/* Request section */}
         {canRequest && (
           <section className="card p-6">
             <h3 className="text-lg font-semibold text-stone-900">Request your car</h3>
-            <p className="mt-1 text-sm text-stone-500">Pick your pickup exit and when you’d like your car.</p>
+            <p className="mt-1 text-sm text-stone-500">Choose your pickup exit and when you’d like your car.</p>
 
             <label htmlFor="pickup-exit" className="mt-4 block text-sm font-medium text-stone-700">Pickup exit</label>
             <select

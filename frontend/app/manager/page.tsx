@@ -334,7 +334,7 @@ export default function ManagerPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100">
       <main className="mx-auto max-w-3xl px-6 py-8 sm:py-10">
-        <header className="mb-8 flex flex-wrap items-center justify-between gap-3">
+        <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">Manager</h1>
             {stats != null && (
@@ -349,9 +349,9 @@ export default function ManagerPage() {
           <a href="/" className="text-sm font-medium text-stone-500 transition hover:text-stone-800">← Home</a>
         </header>
 
-        <section className="card card-hover mb-6 p-6 sm:p-7">
+        <section className="card card-hover mb-6 p-6">
           <h2 className="text-lg font-semibold text-stone-900">Demo Kit</h2>
-          <p className="mt-1 text-sm text-stone-500">Set up and tear down the demo in seconds.</p>
+          <p className="mt-1 text-sm text-stone-500">Set up or reset the demo.</p>
           <div className="mt-5 flex flex-wrap gap-3">
             <button onClick={runSeedDemo} className="btn-accent px-4 py-2.5 text-sm">
               Seed Demo
@@ -438,7 +438,7 @@ export default function ManagerPage() {
 
         <section className="card card-hover mb-6 p-6 sm:p-7">
           <h2 className="text-lg font-semibold text-stone-900">Tips</h2>
-          <p className="mt-1 text-sm text-stone-500">Totals by valet who delivered. Recent tips below.</p>
+          <p className="mt-1 text-sm text-stone-500">Totals by valet. Recent tips below.</p>
           {tipsData && (
             <>
               {tipsData.by_valet.length > 0 ? (
@@ -487,9 +487,9 @@ export default function ManagerPage() {
 
         <section className="card card-hover mb-6 p-6 sm:p-7">
           <h2 className="text-lg font-semibold text-stone-900">Received cars</h2>
-          <p className="mt-1 text-sm text-stone-500">Cars that have been claimed (customer used code). Enter vehicle and plate here. (Venue 1)</p>
+          <p className="mt-1 text-sm text-stone-500">Claimed cars. Enter vehicle and plate here. (Venue 1)</p>
           {receivedTickets.length === 0 ? (
-            <p className="mt-4 text-sm text-stone-500">No claimed cars waiting. New claims will appear here.</p>
+            <p className="mt-4 text-sm text-stone-500">No claimed cars yet.</p>
           ) : (
             <div className="mt-4 space-y-4">
               {receivedTickets.map((t) => (

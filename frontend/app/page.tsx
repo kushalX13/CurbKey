@@ -14,7 +14,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100">
-      <main className="mx-auto max-w-xl px-6 py-12 sm:py-16">
+      <main className="mx-auto max-w-xl px-6 py-12 sm:py-16" role="main">
         <h1 className="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">
           CurbKey
         </h1>
@@ -41,7 +41,7 @@ export default function Home() {
               <section className="card card-hover p-6 transition">
                 <h2 className="text-lg font-semibold text-stone-900">Valet</h2>
                 <p className="mt-1.5 text-sm text-stone-500">
-                  See requests, mark Retrieving → Ready → Picked up.
+                  See requests and update status: Retrieving, Ready, Picked up.
                 </p>
                 <Link href="/valet" className="btn-primary mt-4 inline-block px-5 py-2.5 text-sm">
                   Valet console →

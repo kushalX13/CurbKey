@@ -100,7 +100,7 @@ function ClaimForm() {
 
   if (result?.ok && guestUrl) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-stone-50 via-white to-stone-100">
+      <div className="min-h-screen bg-gradient-to-b from-stone-50 via-white to-stone-100" role="main">
         <div className="mx-auto max-w-md px-6 py-12 sm:py-16">
           <div className="mb-8 text-center">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
@@ -170,7 +170,7 @@ function ClaimForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-stone-50 via-white to-stone-100">
+    <div className="min-h-screen bg-gradient-to-b from-stone-50 via-white to-stone-100" role="main">
       <div className="mx-auto max-w-md px-6 py-12 sm:py-16">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 sm:text-3xl">

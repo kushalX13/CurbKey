@@ -108,7 +108,7 @@ class Request(db.Model):
     assigned_to = db.Column(db.String(80), nullable=True)
     assigned_at = db.Column(db.DateTime, nullable=True)
     zone_id = db.Column(db.Integer, db.ForeignKey("zones.id"), nullable=True)
-    delivered_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)  # valet who marked READY (or PICKED_UP)
+    delivered_by_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     delivered_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -135,12 +135,12 @@ class StatusEvent(db.Model):
 
 
 class Tip(db.Model):
-    """Tip intent (demo: PENDING only; later add Stripe for PAID)."""
+    """Tip record. Status PENDING for now; can add PAID when Stripe is wired."""
     __tablename__ = "tips"
     id = db.Column(db.Integer, primary_key=True)
     request_id = db.Column(db.Integer, db.ForeignKey("requests.id"), nullable=False, index=True)
     amount_cents = db.Column(db.Integer, nullable=False)
-    status = db.Column(db.String(20), default="PENDING", nullable=False)  # PENDING | PAID (when Stripe added)
+    status = db.Column(db.String(20), default="PENDING", nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 

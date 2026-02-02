@@ -33,6 +33,17 @@ sys.exit(1)
 echo "==> Running migrations..."
 (cd backend && flask db upgrade)
 
+# Frontend: ensure API base for local backend; install deps if needed
+ENV_LOCAL="$ROOT/frontend/.env.local"
+if [ ! -f "$ENV_LOCAL" ]; then
+  echo "NEXT_PUBLIC_API_BASE=http://127.0.0.1:5001" > "$ENV_LOCAL"
+  echo "==> Created frontend/.env.local"
+elif ! grep -q "NEXT_PUBLIC_API_BASE" "$ENV_LOCAL"; then
+  echo "NEXT_PUBLIC_API_BASE=http://127.0.0.1:5001" >> "$ENV_LOCAL"
+  echo "==> Added NEXT_PUBLIC_API_BASE to frontend/.env.local"
+fi
+[ -d "$ROOT/frontend/node_modules" ] || (echo "==> Installing frontend deps..." && (cd frontend && npm install -q))
+
 echo "==> Starting backend on http://127.0.0.1:5001 ..."
 (cd backend && flask run --port 5001) &
 BACKEND_PID=$!

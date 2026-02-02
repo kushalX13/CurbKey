@@ -435,9 +435,11 @@ def reset_demo():
         ticket_ids = [r[0] for r in db.session.query(Ticket.id).all()]
 
     if not ticket_ids:
-        return jsonify({"ok": True, "deleted": {"tickets": 0, "requests": 0, "status_events": 0, "notification_subscriptions": 0, "outbox": 0}}), 200
+        return jsonify({"ok": True, "deleted": {"tickets": 0, "requests": 0, "status_events": 0, "notification_subscriptions": 0, "outbox": 0, "tips": 0}}), 200
 
-    # Child tables first (FK constraints)
+    # Child tables first (FK constraints). Tips reference requests, so delete tips before requests.
+    request_ids = [r[0] for r in db.session.query(CarRequest.id).filter(CarRequest.ticket_id.in_(ticket_ids)).all()]
+    n_tips = Tip.query.filter(Tip.request_id.in_(request_ids)).delete(synchronize_session=False) if request_ids else 0
     n_outbox = NotificationOutbox.query.filter(NotificationOutbox.ticket_id.in_(ticket_ids)).delete(synchronize_session=False)
     n_subs = NotificationSubscription.query.filter(NotificationSubscription.ticket_id.in_(ticket_ids)).delete(synchronize_session=False)
     n_events = StatusEvent.query.filter(StatusEvent.ticket_id.in_(ticket_ids)).delete(synchronize_session=False)
@@ -453,6 +455,7 @@ def reset_demo():
             "status_events": n_events,
             "notification_subscriptions": n_subs,
             "outbox": n_outbox,
+            "tips": n_tips,
         },
     }), 200
 

@@ -36,6 +36,24 @@ function authHeaders(): HeadersInit {
   return h;
 }
 
+// Same as Valet: Get car → Retrieving → Ready (car at exit)
+const ACTIONS_BY_STATUS: Record<string, string[]> = {
+  SCHEDULED: ["REQUESTED"],
+  REQUESTED: ["RETRIEVING"],
+  ASSIGNED: ["RETRIEVING"],
+  RETRIEVING: ["READY"],
+  READY: ["PICKED_UP"],
+  PICKED_UP: [],
+  CLOSED: [],
+  CANCELED: [],
+};
+const ACTION_LABELS: Record<string, string> = {
+  REQUESTED: "Get car",
+  RETRIEVING: "Retrieving",
+  READY: "Ready (car at exit)",
+  PICKED_UP: "Picked Up",
+};
+
 export default function ManagerPage() {
   const router = useRouter();
   const API = process.env.NEXT_PUBLIC_API_BASE!;
@@ -117,6 +135,20 @@ export default function ManagerPage() {
     if (!r.ok) return;
     const data = await r.json();
     setReceivedTickets(data.tickets ?? []);
+  };
+
+  const setRequestStatus = async (reqId: number, status: string) => {
+    const r = await fetch(`${API}/api/requests/${reqId}/status`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({ status }),
+    });
+    if (r.status === 401) {
+      router.replace("/login?next=/manager");
+      return;
+    }
+    if (!r.ok) throw new Error(await r.text());
+    load(null, false).catch(() => {});
   };
 
   const runTick = async () => {
@@ -534,6 +566,30 @@ export default function ManagerPage() {
                     )}
                   </div>
                 </div>
+                {(ACTIONS_BY_STATUS[r.status] ?? []).length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-stone-200 pt-3">
+                    <span className="mr-2 text-xs font-semibold uppercase tracking-wider text-stone-500">Actions</span>
+                    {(ACTIONS_BY_STATUS[r.status] ?? []).map((action) => (
+                      <button
+                        key={action}
+                        type="button"
+                        onClick={() => setRequestStatus(r.id, action).catch((e) => setErr(String(e)))}
+                        className={
+                          action === "RETRIEVING"
+                            ? "rounded-lg border-2 border-amber-500 bg-amber-50 px-3.5 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"
+                            : action === "READY"
+                              ? "rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                              : action === "REQUESTED"
+                                ? "rounded-lg border-2 border-blue-600 bg-blue-50 px-3.5 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-100"
+                                : "rounded-lg border border-stone-300 bg-white px-3.5 py-2 text-sm font-medium text-stone-700 transition hover:bg-stone-50"
+                        }
+                        title={action === "READY" ? "Customer will see “Your car is ready”" : undefined}
+                      >
+                        {ACTION_LABELS[action] ?? action}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {r.ticket_id != null && (
                   <div className="mt-2 flex flex-wrap items-center gap-3 border-t border-stone-100 pt-2">
                     {(r.vehicle_description || r.car_number) && editingRequestId !== r.id ? (

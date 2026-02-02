@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { QRCodeSVG } from "qrcode.react";
 import { getStoredToken } from "../login/page";
 import { formatDateTime, parseUTC } from "../utils/date";
 
@@ -18,8 +17,6 @@ type ReqT = {
   claimed_at?: string | null;
   claimed_phone_masked?: string | null;
 };
-
-type NewTicketResult = { id: number; claim_code: string; venue_slug: string };
 
 type ReceivedTicketT = {
   id: number;
@@ -94,10 +91,6 @@ export default function ValetPage() {
   const [err, setErr] = useState<string>("");
   const [carNumberDrafts, setCarNumberDrafts] = useState<Record<number, string>>({});
   const [vehicleDescriptionDrafts, setVehicleDescriptionDrafts] = useState<Record<number, string>>({});
-  const [lastCreatedTicket, setLastCreatedTicket] = useState<NewTicketResult | null>(null);
-  const [createTicketLoading, setCreateTicketLoading] = useState(false);
-  const [newTicketVehicle, setNewTicketVehicle] = useState("");
-  const [newTicketCarNumber, setNewTicketCarNumber] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [stats, setStats] = useState<{ requests_today?: number; avg_time_to_ready_min?: number | null } | null>(null);
   const [receivedTickets, setReceivedTickets] = useState<ReceivedTicketT[]>([]);
@@ -112,36 +105,6 @@ export default function ValetPage() {
       <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
     </svg>
   );
-
-  const createTicket = async (count = 1) => {
-    setCreateTicketLoading(true);
-    setErr("");
-    try {
-      const r = await fetch(`${API}/api/valet/tickets`, {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify(count > 1 ? { count } : {}),
-      });
-      if (r.status === 401) {
-        router.replace("/login?next=/valet");
-        return;
-      }
-      if (!r.ok) throw new Error(await r.text());
-      const data = await r.json();
-      const first = data.tickets ? data.tickets[0] : data;
-      setLastCreatedTicket({
-        id: first.ticket.id,
-        claim_code: first.claim_code,
-        venue_slug: first.venue_slug,
-      });
-      setNewTicketVehicle("");
-      setNewTicketCarNumber("");
-    } catch (e) {
-      setErr(String(e));
-    } finally {
-      setCreateTicketLoading(false);
-    }
-  };
 
   const setCarDetails = async (ticketId: number, carNumber: string, vehicleDescription?: string) => {
     const r = await fetch(`${API}/api/tickets/${ticketId}/car-number`, {
@@ -160,16 +123,6 @@ export default function ValetPage() {
     setEditingReceivedId((prev) => (prev === ticketId ? null : prev));
     await load();
     await loadReceivedTickets();
-  };
-
-  const saveNewTicketCarDetails = async () => {
-    if (!lastCreatedTicket) return;
-    try {
-      await setCarDetails(lastCreatedTicket.id, newTicketCarNumber, newTicketVehicle);
-      setLastCreatedTicket(null);
-    } catch (e) {
-      setErr(String(e));
-    }
   };
 
   useEffect(() => {
@@ -331,74 +284,6 @@ export default function ValetPage() {
         </section>
 
         <section className="card card-hover mb-6 p-5 sm:p-6">
-          <h2 className="text-lg font-semibold text-stone-900">New car — create ticket</h2>
-          <p className="mt-1 text-sm text-stone-500">When a car rolls up: create ticket, show QR + code to customer, then enter car details.</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => createTicket(1)}
-              disabled={createTicketLoading}
-              className="btn-primary px-4 py-2.5 text-sm disabled:opacity-60"
-            >
-              {createTicketLoading ? "Creating…" : "Create ticket"}
-            </button>
-            <button
-              type="button"
-              onClick={() => createTicket(5)}
-              disabled={createTicketLoading}
-              className="rounded-lg border border-stone-300 bg-white px-4 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50 disabled:opacity-60"
-            >
-              Create 5 tickets
-            </button>
-          </div>
-          {lastCreatedTicket && (
-            <div className="mt-5 rounded-lg bg-stone-50 p-4">
-              <p className="text-xs font-medium uppercase tracking-wider text-stone-500">Give customer this code</p>
-              <p className="mt-1 font-mono text-2xl font-bold tracking-widest text-stone-900">{lastCreatedTicket.claim_code}</p>
-              <p className="mt-2 text-xs font-medium uppercase tracking-wider text-stone-500">Customer scans this (venue link)</p>
-              <p className="mt-1 break-all text-sm font-medium text-stone-800">
-                {typeof window !== "undefined" ? `${window.location.origin}/v/${lastCreatedTicket.venue_slug}` : `/v/${lastCreatedTicket.venue_slug}`}
-              </p>
-              <div className="mt-3 flex justify-start">
-                <div className="rounded-lg border border-stone-200 bg-white p-3">
-                  <QRCodeSVG
-                    value={typeof window !== "undefined" ? `${window.location.origin}/v/${lastCreatedTicket.venue_slug}` : `/v/${lastCreatedTicket.venue_slug}`}
-                    size={140}
-                    level="M"
-                  />
-                </div>
-              </div>
-              <p className="mt-4 text-xs font-medium uppercase tracking-wider text-stone-500">Enter car details (after customer leaves)</p>
-              <div className="mt-2 flex flex-wrap items-end gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-stone-600">Vehicle (e.g. McLaren 720)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. McLaren 720"
-                    value={newTicketVehicle}
-                    onChange={(e) => setNewTicketVehicle(e.target.value)}
-                    className="input-premium mt-1 w-44"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-stone-600">Plate / Car #</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. ABC 1234"
-                    value={newTicketCarNumber}
-                    onChange={(e) => setNewTicketCarNumber(e.target.value)}
-                    className="input-premium mt-1 w-36"
-                  />
-                </div>
-                <button type="button" onClick={saveNewTicketCarDetails} className="btn-primary px-3 py-2 text-sm">
-                  Save
-                </button>
-              </div>
-            </div>
-          )}
-        </section>
-
-        <section className="card card-hover mb-6 p-5 sm:p-6">
           <h2 className="text-lg font-semibold text-stone-900">Received cars</h2>
           <p className="mt-1 text-sm text-stone-500">Cars that have been claimed (customer used code). Enter vehicle and plate here.</p>
           {receivedTickets.length === 0 ? (
@@ -544,6 +429,30 @@ export default function ValetPage() {
                       </a>
                     )}
                   </div>
+                  {(ACTIONS_BY_STATUS[r.status] ?? []).length > 0 && (
+                    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-stone-200 pt-4">
+                      <span className="mr-2 text-xs font-semibold uppercase tracking-wider text-stone-500">Actions</span>
+                      {(ACTIONS_BY_STATUS[r.status] ?? []).map((action) => (
+                        <button
+                          key={action}
+                          type="button"
+                          onClick={() => setStatus(r.id, action).catch((e) => alert(String(e)))}
+                          className={
+                            action === "RETRIEVING"
+                              ? "rounded-lg border-2 border-amber-500 bg-amber-50 px-3.5 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100"
+                              : action === "READY"
+                                ? "rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                                : action === "REQUESTED"
+                                  ? "rounded-lg border-2 border-blue-600 bg-blue-50 px-3.5 py-2 text-sm font-semibold text-blue-800 transition hover:bg-blue-100"
+                                  : "btn-primary px-3.5 py-2 text-sm"
+                          }
+                          title={action === "READY" ? "Customer will see “Your car is ready”" : undefined}
+                        >
+                          {ACTION_LABELS[action] ?? action}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <div className="mt-3 flex flex-wrap items-center gap-3">
                     {(r.vehicle_description || r.car_number) && editingRequestId !== r.id ? (
                       <>
@@ -605,28 +514,6 @@ export default function ValetPage() {
                   </div>
                 </div>
               </div>
-
-              {(ACTIONS_BY_STATUS[r.status] ?? []).length > 0 && (
-                <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-stone-200 pt-4">
-                  <span className="mr-2 text-xs font-medium text-stone-500">Mark:</span>
-                  {(ACTIONS_BY_STATUS[r.status] ?? []).map((action) => (
-                    <button
-                      key={action}
-                      onClick={() => setStatus(r.id, action).catch((e) => alert(String(e)))}
-                      className={
-                        action === "RETRIEVING"
-                          ? "btn-accent px-3.5 py-2 text-sm"
-                          : action === "READY"
-                            ? "rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 active:scale-[0.98]"
-                            : "btn-primary px-3.5 py-2 text-sm"
-                      }
-                      title={action === "READY" ? "Customer will see “Your car is ready”" : undefined}
-                    >
-                      {ACTION_LABELS[action] ?? action}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           ))}
           {nextCursor != null && (

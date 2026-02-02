@@ -79,7 +79,8 @@ export default function ManagerPage() {
   const [editingRequestId, setEditingRequestId] = useState<number | null>(null);
   const [requestsCollapsed, setRequestsCollapsed] = useState(false);
   const [stats, setStats] = useState<{ requests_today?: number; avg_time_to_ready_min?: number | null } | null>(null);
-  const [tipsData, setTipsData] = useState<{ tips: { id: number; request_id: number; amount_cents: number; status: string; created_at: string }[]; by_valet: { user_id: number; email: string | null; total_cents: number; count: number }[] } | null>(null);
+  const [tipsData, setTipsData] = useState<{ tips: { id: number; request_id: number; amount_cents: number; status: string; created_at: string; vehicle_description?: string | null; car_number?: string | null }[]; by_valet: { user_id: number; email: string | null; total_cents: number; count: number }[] } | null>(null);
+  const [tipsListCollapsed, setTipsListCollapsed] = useState(true);
   const createResultRef = useRef<HTMLDivElement>(null);
 
   const PencilIcon = () => (
@@ -436,35 +437,48 @@ export default function ManagerPage() {
         </section>
 
         <section className="card card-hover mb-6 p-6 sm:p-7">
-          <h2 className="text-lg font-semibold text-stone-900">Tip pledges</h2>
-          <p className="mt-1 text-sm text-stone-500">Tips recorded by guests (demo: no payment taken). Totals by valet who delivered.</p>
+          <h2 className="text-lg font-semibold text-stone-900">Tips</h2>
+          <p className="mt-1 text-sm text-stone-500">Totals by valet who delivered. Recent tips below.</p>
           {tipsData && (
             <>
               {tipsData.by_valet.length > 0 ? (
-                <div className="mt-4 space-y-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Totals by valet</p>
-                  {tipsData.by_valet.map((v) => (
-                    <div key={v.user_id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-stone-200 bg-stone-50/50 p-3">
-                      <span className="font-medium text-stone-800">{v.email ?? (v.user_id === 0 ? "Unknown" : `Valet #${v.user_id}`)}</span>
-                      <span className="font-mono font-semibold text-stone-900">${(v.total_cents / 100).toFixed(2)}</span>
+                <div className="mt-5 space-y-2">
+                  {tipsData.by_valet.map((v, i) => (
+                    <div key={v.user_id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3">
+                      <span className="font-medium text-stone-800">Valet {i + 1}</span>
+                      <span className="font-mono text-lg font-semibold text-stone-900">${(v.total_cents / 100).toFixed(2)}</span>
                       <span className="text-xs text-stone-500">{v.count} tip{v.count !== 1 ? "s" : ""}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="mt-4 text-sm text-stone-500">No tips pledged yet.</p>
+                <p className="mt-5 text-sm text-stone-500">No tips yet.</p>
               )}
               {tipsData.tips.length > 0 && (
-                <div className="mt-4 border-t border-stone-200 pt-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">Recent pledges</p>
-                  <ul className="mt-2 space-y-1.5">
-                    {tipsData.tips.slice(0, 10).map((tip) => (
-                      <li key={tip.id} className="flex justify-between text-sm text-stone-700">
-                        <span>Request #{tip.request_id}</span>
-                        <span className="font-mono font-medium">${(tip.amount_cents / 100).toFixed(2)}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="mt-5 border-t border-stone-200 pt-5">
+                  <button
+                    type="button"
+                    onClick={() => setTipsListCollapsed((c) => !c)}
+                    className="flex w-full items-center justify-between rounded-lg border border-stone-200 bg-stone-50/50 px-4 py-3 text-left font-medium text-stone-800 transition hover:bg-stone-100"
+                    aria-expanded={!tipsListCollapsed}
+                  >
+                    <span>Recent tips ({tipsData.tips.length})</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={tipsListCollapsed ? "" : "rotate-180"} aria-hidden>
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
+                  {!tipsListCollapsed && (
+                    <ul className="mt-2 space-y-2">
+                      {tipsData.tips.slice(0, 20).map((tip) => (
+                        <li key={tip.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-stone-100 bg-white px-4 py-2.5 text-sm">
+                          <span className="font-medium text-stone-800">
+                            {tip.vehicle_description || tip.car_number || `Request #${tip.request_id}`}
+                          </span>
+                          <span className="font-mono font-semibold text-stone-900">${(tip.amount_cents / 100).toFixed(2)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
             </>

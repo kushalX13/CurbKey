@@ -1011,11 +1011,20 @@ def list_tips():
         by_valet[uid]["total_cents"] += tip.amount_cents
         by_valet[uid]["count"] += 1
 
+    tips_out = []
+    for t in tips:
+        ticket = t.request.ticket if t.request else None
+        tips_out.append({
+            "id": t.id,
+            "request_id": t.request_id,
+            "amount_cents": t.amount_cents,
+            "status": t.status,
+            "created_at": t.created_at.isoformat(),
+            "vehicle_description": ticket.vehicle_description if ticket else None,
+            "car_number": ticket.car_number if ticket else None,
+        })
     return jsonify({
-        "tips": [
-            {"id": t.id, "request_id": t.request_id, "amount_cents": t.amount_cents, "status": t.status, "created_at": t.created_at.isoformat()}
-            for t in tips
-        ],
+        "tips": tips_out,
         "by_valet": list(by_valet.values()),
     })
 

@@ -297,7 +297,7 @@ export default function TicketPage() {
         {isAllSet && req?.tip_eligible && req?.id && (
           <section className="card mb-8 p-6">
             <h3 className="text-lg font-semibold text-stone-900">Tip your valet</h3>
-            <p className="mt-1 text-sm text-stone-500">Thank your valet with a tip. No payment is taken—this records your intent.</p>
+            <p className="mt-1 text-sm text-stone-500">Thank your valet with a tip.</p>
             {tipSubmitted ? (
               <p className="mt-4 rounded-lg bg-emerald-50 p-4 text-center font-medium text-emerald-800">Thanks! Your tip was recorded.</p>
             ) : (

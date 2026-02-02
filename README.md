@@ -1,144 +1,132 @@
 # CurbKey
 
-Valet request and scheduling: guests request their car (now or scheduled), valets update status, managers run the scheduler and notifications. Built for demo and interview clarity.
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-- **Guest:** ticket link → request car, schedule (+1 min), see status live (SSE).
-- **Valet:** Active/History requests, Retrieving → Ready → Picked up.
-- **Manager:** Demo kit (seed, create ticket, copy guest link, reset), scheduler tick, drain/retry notifications.
+Valet request and scheduling: guests request their car (now or scheduled), valets update status, managers run the demo and scheduler.
+
+- **Guest:** ticket link → pick exit, request car (now or in 1/5/10 min), see status live.
+- **Valet:** Active/History requests, mark Retrieving → Ready → Picked up.
+- **Manager:** Seed demo, create tickets, scheduler tick, notifications, tips.
+
+## Why CurbKey
+
+Most valet systems are hardware-heavy, expensive, and designed for permanent garages. CurbKey is built for temporary, high-churn environments — restaurants, events, hospitals, and pop-up valet operations — where speed, zero hardware, and SMS-based identity matter.
+
+The goal is a ticketless, QR-first valet flow that works anywhere in minutes.
+
+## Non-goals (for this demo)
+
+- Not a full enterprise valet system
+- No hardware integrations
+- No production-grade payments or compliance
+- Demo-scale auth and role management
+
+These are intentionally out of scope for the public demo.
+
+## Roadmap (High-level)
+
+- SMS-first guest flow (no app install)
+- Tip attribution directly to valet staff
+- Multi-exit and large-venue support
+- Venue analytics (wait time, throughput)
+- Stripe Connect payouts (future)
+
+Roadmap will evolve based on operator feedback.
+
+## Security & Data
+
+- JWT-based auth for staff roles
+- CORS restricted by environment
+- Secrets managed via environment variables
+- No real payment data in this demo
 
 ---
 
-## One-command dev & demo
+## Run the demo locally (2 commands)
 
-**Start everything (DB + backend + frontend):**
+**Prerequisites:** Docker (for Postgres), Python 3, Node.js.
+
+**1. Start everything (DB + backend + frontend):**
 
 ```bash
-cd /path/to/CrubKey   # project root (where Makefile and scripts/ live)
+cd /path/to/CurbKey
 make dev
-# or: ./scripts/dev.sh
 ```
 
-Requires Docker (for Postgres). Backend runs on **http://127.0.0.1:5001**, frontend on **http://127.0.0.1:3000**. Ctrl+C stops the frontend (and the script stops the backend).
+This starts Postgres, runs migrations, starts the backend at **http://127.0.0.1:5001** and the frontend at **http://127.0.0.1:3000**. The script creates `frontend/.env.local` with `NEXT_PUBLIC_API_BASE=http://127.0.0.1:5001` if needed and installs frontend deps on first run. Use Ctrl+C to stop (stops frontend; backend may keep running).
 
-**Seed + create ticket + print guest URL (backend must be running):**
+**2. Get a guest link (in a second terminal):**
 
 ```bash
+cd /path/to/CurbKey
 make demo
-# or: python3 scripts/demo.py
 ```
 
-Prints the guest URL; open it in the browser to see the guest page.
+Prints a URL like `http://127.0.0.1:3000/t/xxxxx`. Open it in a browser to use the guest flow.
+
+**Optional:** Open **http://127.0.0.1:3000**, log in as **admin@curbkey.com** / **admin123**, go to Manager → Seed Demo → Create Ticket → Copy Guest Link. Same result without `make demo`.
 
 ---
 
-## Run locally (manual)
+## Quick demo flow
 
-**1. Backend (Flask + Postgres)**
+1. **Manager** → Seed Demo → Create Ticket → Copy Guest Link (or use URL from `make demo`).
+2. **Guest** → Open link → pick exit → Request my car now (or In 1 min).
+3. **Manager** → Scheduler tick (if you scheduled for later).
+4. **Valet** → Valet console → Active → Get car → Retrieving → Ready (car at exit).
+5. **Guest** → Got my car → tip (optional).
 
-```bash
-cd backend
-# Set FLASK_APP=wsgi:app and DATABASE URL in .env; create DB and run migrations
-flask db upgrade
-flask run --port 5001
-```
+## Demo
 
-**2. Seed the app (once)**
+| Manager console | Valet console |
+|-----------------|---------------|
+| ![Manager console](images/Manager.png) | ![Valet console](images/Valet.png) |
 
-```bash
-curl -s -X POST http://127.0.0.1:5001/auth/seed \
-  -H "Content-Type: application/json" \
-  -d '{"email":"admin@curbkey.com","password":"admin123"}'
-```
-
-**3. Frontend (Next.js)**
-
-```bash
-cd frontend
-# Create .env.local with: NEXT_PUBLIC_API_BASE=http://127.0.0.1:5001
-npm install
-npm run dev
-```
-
-Open **http://127.0.0.1:3000**.
+| Guest — initial (request car) | Guest — after pickup (tip page) |
+|-------------------------------|----------------------------------|
+| ![Guest initial](images/User.png) | ![Guest tip page](images/User_2.png) |
 
 ---
 
-## Deploy (public demo for CV)
+## Deploy (public demo)
 
-**Frontend:** Vercel · **Backend:** Render / Fly / Railway · **DB:** Neon / Supabase / Render
+- **Frontend:** Vercel  
+- **Backend:** Render / Fly / Railway  
+- **DB:** Neon / Supabase / Render Postgres  
 
-Health checks (`GET /healthz`), env vars, and CORS are set.
+Set `NEXT_PUBLIC_API_BASE` on Vercel; set `DATABASE_URL`, `JWT_SECRET_KEY`, `CORS_ORIGINS` on the backend. Health check: `GET /healthz`.
 
-- **Step-by-step (Vercel + Render + Supabase):** [docs/DEPLOY_TODAY.md](docs/DEPLOY_TODAY.md) — do this first.
-- Full reference: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
-
-- **Vercel:** Set `NEXT_PUBLIC_API_BASE` to your backend URL.
-- **Backend:** Set `DATABASE_URL`, `JWT_SECRET_KEY`, `CORS_ORIGINS` (your Vercel URL). Health check path: `/healthz`.
-- Optional: [render.yaml](render.yaml) for Render one-click deploy.
+**Step-by-step (Vercel + Render + Supabase):** [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ---
 
-**4. Worker (optional — scheduler + notifications)**
+## Other commands
 
-For production, run a worker that ticks the scheduler and drains the notification outbox on a loop (no button needed):
-
-```bash
-make worker
-# or: cd backend && flask worker
-```
-
-Env (optional): `WORKER_TICK_INTERVAL_SECONDS=60`, `WORKER_DRAIN_INTERVAL_SECONDS=30`, `WORKER_DRAIN_LIMIT=50`. On Render/Heroku, run this as a separate worker process.
-
----
-
-## Demo in 90 seconds
-
-1. **Seed demo** — Manager console → **Seed Demo** (venue + exits + zones + valet).
-2. **Create ticket** — Manager → **Create Ticket** → **Copy Guest Link**.
-3. **Open guest** — Paste or open the guest link; pick exit, click **Request now** (or **In 1 min**).
-4. **Scheduler tick** — Manager → **Scheduler tick** (or run `./scripts/tick-scheduler.sh` with a manager JWT so SCHEDULED → REQUESTED).
-5. **Valet** — Open **Valet console**, sign in `admin@curbkey.com` / `admin123`, use **Active** tab and **Retrieving** / **Ready** / **Picked Up**.
-
-**Login:** `admin@curbkey.com` / `admin123`
-
-Full walkthrough: [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md). Architecture and flows: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
----
-
-## Tests
-
-From project root:
-
-```bash
-make test
-# or: cd backend && DATABASE_URL=sqlite:///:memory: python -m pytest tests/ -v
-```
-
-Uses in-memory SQLite (no Postgres required). Covers: create SCHEDULED request, idempotent second request, valet cannot reset demo, guest cannot call protected endpoints. Scheduler tick tests (tick flips once, second tick no-op) are skipped on SQLite (they use `FOR UPDATE SKIP LOCKED`); run with Postgres for full coverage.
-
-**CI (GitHub Actions):** On push/PR to `main` or `master`, [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs the full suite against Postgres (all 6 tests, including scheduler tick). No config needed beyond pushing to GitHub.
-
-**New to testing?** Read [docs/TESTING_101.md](docs/TESTING_101.md) — a short, beginner-friendly guide (what tests are, why we have them, how to run and read them).
+| Command | Description |
+|--------|-------------|
+| `make dev` | Start DB + backend + frontend (local demo) |
+| `make demo` | Seed + create ticket, print guest URL (backend must be running) |
+| `make db` | Start Postgres only (`infra/docker-compose up -d`) |
+| `make db-down` | Stop Postgres |
+| `make test` | Run backend tests (in-memory SQLite) |
+| `make worker` | Run scheduler + notification worker (optional, for production) |
 
 ---
 
 ## Repo layout
 
 ```
-CrubKey/
-├── Makefile          # make dev, make demo
-├── backend/          # Flask API, Postgres, migrations
-├── frontend/         # Next.js (guest, valet, manager)
-├── scripts/          # dev.sh, demo.py, sample_run.py, tick-scheduler.sh
-├── docs/             # DEMO_SCRIPT.md, ARCHITECTURE.md, SPEC.md
+CurbKey/
+├── Makefile           # make dev, make demo, make test
+├── backend/          # Flask API, migrations (.env.example for env vars)
+├── frontend/         # Next.js (.env.example for local API URL)
+├── scripts/          # dev.sh, demo.py, tick-scheduler.sh
+├── docs/             # DEPLOYMENT.md
 ├── infra/            # docker-compose (Postgres)
+├── LICENSE           # MIT
 └── README.md
 ```
 
----
+**Stack:** Backend — Python, Flask, SQLAlchemy, Postgres. Frontend — Next.js, React, Tailwind.
 
-## Tech stack
-
-- **Backend:** Python 3, Flask, SQLAlchemy, Flask-JWT-Extended, Postgres.
-- **Frontend:** Next.js, React, Tailwind.
-- **Patterns:** Outbox for notifications (drain + retry), scheduler tick for SCHEDULED→REQUESTED, one active request per ticket (idempotent).
+**License:** [MIT](LICENSE)

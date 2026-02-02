@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**Live demo:** [Open app](https://your-app.vercel.app) — *replace with your Vercel URL*
+**Live demo:** [Open app](https://curb-key.vercel.app/) 
 
 Valet request and scheduling: guests request their car (now or scheduled), valets update status, managers run the demo and scheduler.
 

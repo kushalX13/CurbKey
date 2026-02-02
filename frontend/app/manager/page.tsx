@@ -543,6 +543,7 @@ export default function ManagerPage() {
             </div>
           </div>
           {!requestsCollapsed && (
+          <>
           <div className="mt-0 grid gap-3 p-4 pt-0">
             {reqs.map((r) => (
               <div key={r.id} className="card card-hover p-4 sm:p-5">
@@ -657,7 +658,7 @@ export default function ManagerPage() {
               </button>
             </div>
           )}
-          </div>
+          </>
           )}
         </section>
       </main>

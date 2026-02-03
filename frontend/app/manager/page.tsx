@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
-import { getStoredToken } from "../login/page";
+import { getStoredToken, clearStoredToken } from "../login/page";
 import { formatDateTime } from "../utils/date";
 
 type ReceivedTicketT = {
@@ -113,6 +113,24 @@ export default function ManagerPage() {
       return;
     }
   }, [router]);
+
+  useEffect(() => {
+    const checkRole = async () => {
+      const r = await fetch(`${API}/me`, { headers: authHeaders() });
+      if (r.status === 401) {
+        router.replace("/login?next=/manager");
+        return;
+      }
+      if (r.ok) {
+        const data = await r.json();
+        if (data.role === "VALET") {
+          clearStoredToken();
+          router.replace("/login?next=/manager");
+        }
+      }
+    };
+    checkRole();
+  }, [API, router]);
 
   const load = async (cursor?: number | null, append = false) => {
     setErr("");
@@ -346,7 +364,10 @@ export default function ManagerPage() {
               </p>
             )}
           </div>
-          <a href="/" className="text-sm font-medium text-stone-500 transition hover:text-stone-800">← Home</a>
+          <span className="flex items-center gap-3">
+            <a href="/" className="text-sm font-medium text-stone-500 transition hover:text-stone-800">← Home</a>
+            <button type="button" onClick={() => { clearStoredToken(); router.push("/login"); }} className="text-sm font-medium text-stone-500 transition hover:text-stone-800">Log out</button>
+          </span>
         </header>
 
         <section className="card card-hover mb-6 p-6">

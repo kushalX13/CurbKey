@@ -73,7 +73,7 @@ export default function Home() {
 
         {isStaff && (
           <p className="mt-10 text-xs text-stone-400">
-            Default login after seed: <strong className="text-stone-600">admin@curbkey.com</strong> / <strong className="text-stone-600">admin123</strong>
+            Valet: valet@demo.curbkey.com / valet123 · Manager: admin@curbkey.com / admin123 (after seed)
           </p>
         )}
       </main>

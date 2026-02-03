@@ -58,8 +58,8 @@ function LoginForm() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-stone-50 to-stone-100 flex items-center justify-center p-6">
       <main className="w-full max-w-md card p-8" role="main">
-        <h1 className="text-2xl font-bold tracking-tight text-stone-900">Sign in</h1>
-        <p className="mt-1 text-sm text-stone-500">Valet or Manager</p>
+        <h1 className="text-2xl font-bold tracking-tight text-stone-900">Staff sign in</h1>
+        <p className="mt-1 text-sm text-stone-500">Valet or Manager — use demo credentials after seed.</p>
 
         <form onSubmit={submit} className="mt-8 flex flex-col gap-5">
           <div>

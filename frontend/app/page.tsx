@@ -21,7 +21,6 @@ export default function Home() {
         <p className="mt-2 text-stone-600">
           Valet request & scheduling — request your car when you’re ready.
         </p>
-
         <div className="mt-12 flex flex-col gap-6">
           <section className="card card-hover p-6 transition">
             <h2 className="text-lg font-semibold text-stone-900">Customer (guest)</h2>
@@ -36,7 +35,17 @@ export default function Home() {
             </p>
           </section>
 
-          {isStaff && (
+          {!isStaff ? (
+          <section className="card card-hover p-6 transition">
+            <h2 className="text-lg font-semibold text-stone-900">Staff login</h2>
+            <p className="mt-1.5 text-sm text-stone-500">
+              Valet or Manager — sign in to open the console.
+            </p>
+            <Link href="/login" className="btn-primary mt-4 inline-block px-5 py-2.5 text-sm">
+              Staff login →
+            </Link>
+          </section>
+          ) : (
             <>
               <section className="card card-hover p-6 transition">
                 <h2 className="text-lg font-semibold text-stone-900">Valet</h2>

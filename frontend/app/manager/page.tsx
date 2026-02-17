@@ -81,6 +81,7 @@ export default function ManagerPage() {
   const [stats, setStats] = useState<{ requests_today?: number; avg_time_to_ready_min?: number | null } | null>(null);
   const [tipsData, setTipsData] = useState<{ tips: { id: number; request_id: number; amount_cents: number; status: string; created_at: string; vehicle_description?: string | null; car_number?: string | null }[]; by_valet: { user_id: number; email: string | null; total_cents: number; count: number }[] } | null>(null);
   const [tipsListCollapsed, setTipsListCollapsed] = useState(true);
+  const [backendStatus, setBackendStatus] = useState<"unknown" | "ok" | "error">("unknown");
   const createResultRef = useRef<HTMLDivElement>(null);
 
   const PencilIcon = () => (
@@ -131,6 +132,20 @@ export default function ManagerPage() {
     };
     checkRole();
   }, [API, router]);
+
+  useEffect(() => {
+    const checkBackend = async () => {
+      try {
+        const r = await fetch(`${API}/healthz`, { method: "GET" });
+        setBackendStatus(r.ok ? "ok" : "error");
+      } catch {
+        setBackendStatus("error");
+      }
+    };
+    checkBackend();
+    const t = setInterval(checkBackend, 30000);
+    return () => clearInterval(t);
+  }, [API]);
 
   const load = async (cursor?: number | null, append = false) => {
     setErr("");
@@ -263,6 +278,7 @@ export default function ManagerPage() {
       if (!res.ok) {
         const text = await res.text();
         setCreateTicketResult(`Error: ${text}`);
+        setBackendStatus("error");
         return;
       }
       const data = await res.json();
@@ -273,10 +289,18 @@ export default function ManagerPage() {
       setLastClaimCode(first.claim_code ?? null);
       setLastVenueSlug(first.venue_slug ?? null);
       setCreateTicketResult(data.count ? `Created ${data.count} tickets` : `Created ticket → ${guestPath}`);
+      setBackendStatus("ok");
       load(null, false).catch(() => {});
       setTimeout(() => createResultRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 150);
     } catch (e) {
-      setCreateTicketResult(String(e));
+      const msg = String(e);
+      const isNetwork = /failed to fetch|networkerror|load failed/i.test(msg) || (e instanceof TypeError && msg === "Failed to fetch");
+      setCreateTicketResult(
+        isNetwork
+          ? "Backend unreachable. On Render free tier the service sleeps after ~15 min — wait 30–60s and try again."
+          : msg
+      );
+      setBackendStatus("error");
     }
   };
 
@@ -363,6 +387,15 @@ export default function ManagerPage() {
                 )}
               </p>
             )}
+            <p className="mt-1 text-sm">
+              {backendStatus === "ok" && <span className="text-green-700">Backend: connected</span>}
+              {backendStatus === "error" && (
+                <span className="text-amber-700" title="Create Ticket will fail until backend is up. On Render free tier the service sleeps after ~15 min — wait 30–60s and refresh.">
+                  Backend: unreachable (Render may be sleeping — wait 30s and retry)
+                </span>
+              )}
+              {backendStatus === "unknown" && <span className="text-stone-400">Backend: checking…</span>}
+            </p>
           </div>
           <span className="flex items-center gap-3">
             <a href="/" className="text-sm font-medium text-stone-500 transition hover:text-stone-800">← Home</a>

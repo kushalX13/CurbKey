@@ -1,6 +1,6 @@
 # Deploy CurbKey (public demo)
 
-Deploy frontend on Vercel, backend on Render (or Fly/Railway), and Postgres on Neon or Supabase. Health checks and CORS are set for production.
+Deploy frontend on Vercel, backend on Render, and Postgres on Neon or Supabase. Health checks and CORS are set for production.
 
 ---
 
